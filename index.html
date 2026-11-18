@@ -32,7 +32,7 @@ input[type=file]{display:none}
 #pos p{font-size:19px;margin:12px auto;max-width:560px}
 .pace{color:var(--accent);font-size:17px}
 .img{margin:14px auto 4px;max-width:480px;aspect-ratio:4/3;border:1px dashed var(--line);border-radius:14px;display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--muted);font-size:15px}
-.img img{width:100%;height:100%;object-fit:contain}
+.img img,.img video{width:100%;height:100%;object-fit:contain;display:block}
 .pulse{width:18px;height:18px;border-radius:50%;background:var(--accent);margin:10px auto 0;opacity:.25;transition:opacity .08s,transform .08s}
 .pulse.on{opacity:.95;transform:scale(1.35)}
 .manual{display:none;margin-top:14px}
@@ -92,15 +92,15 @@ body.stage .stageonly{display:flex}
       <h2 id="pName">Start some music</h2>
       <div class="pace" id="pPace"></div>
       <div class="pulse" id="pulse"></div>
-      <div class="img" id="pImg">Your image shows here</div>
+      <div class="img" id="pImg">Your image or video shows here</div>
       <p id="pDesc"></p>
     </div>
     <div class="row" style="justify-content:center;margin-top:8px">
       <button id="nextBtn">Next</button>
-      <button id="imgBtn">Add image</button>
+      <button id="imgBtn">Add image or video</button>
       <button class="primary" id="stageBtn">Full screen</button>
     </div>
-    <input type="file" id="imgIn" accept="image/*">
+    <input type="file" id="imgIn" accept="image/*,video/*,.gif,.mp4,.mov,.m4v,.webm">
     <div class="stageonly"><button id="next2">Next</button><button id="exitStage">Exit</button></div>
   </div>
 
@@ -115,13 +115,13 @@ body.stage .stageonly{display:flex}
   </div>
 
   <div class="card">
-    <strong>Add images in bulk</strong>
-    <div class="note">Pick a folder or several images. Each file is matched by name, for example spoon.png or rider.jpg. The list of names is under Positions.</div>
+    <strong>Add images, GIFs and videos in bulk</strong>
+    <div class="note">Pick a folder or several files. Each file is matched by name, for example spoon.gif or rider.mp4. Videos play muted on a loop. The list of names is under Positions.</div>
     <div class="row" style="margin-top:10px">
       <label class="btn" for="bulkDir">Choose folder</label>
       <input type="file" id="bulkDir" webkitdirectory multiple>
-      <label class="btn" for="bulkFiles">Choose images</label>
-      <input type="file" id="bulkFiles" accept="image/*" multiple>
+      <label class="btn" for="bulkFiles">Choose files</label>
+      <input type="file" id="bulkFiles" accept="image/*,video/*,.gif,.mp4,.mov,.m4v,.webm" multiple>
     </div>
     <div class="note" id="bulkStatus"></div>
   </div>
@@ -282,13 +282,22 @@ function showPace(){
   const b=state.bpm;if(!b){$('pPace').textContent='';return}
   $('pPace').textContent=b>=130?'Move on every other beat':b<75?'One long, slow movement per beat':'Move with the beat';
 }
-function render(){
+let mediaUrl=null,renderSeq=0;
+async function render(){
   if(!current)return;
   $('pName').textContent=current.name;$('pLvl').textContent=current.lvl;$('pDesc').textContent=current.d;
   showPace();
-  const img=store.get('img.'+current.id,null);
-  $('pImg').innerHTML=img?'<img alt="">':'Your image shows here';
-  if(img)$('pImg').firstChild.src=img;
+  const seq=++renderSeq,m=await media.get(current.id);
+  if(seq!==renderSeq)return;
+  const box=$('pImg');
+  if(mediaUrl){URL.revokeObjectURL(mediaUrl);mediaUrl=null}
+  if(!m){box.textContent='Your image or video shows here';return}
+  mediaUrl=URL.createObjectURL(m.blob);
+  box.innerHTML='';
+  if(m.kind==='video'){
+    const v=document.createElement('video');v.src=mediaUrl;v.muted=true;v.loop=true;v.autoplay=true;v.playsInline=true;
+    v.setAttribute('playsinline','');box.appendChild(v);v.play().catch(()=>{});
+  }else{const i=document.createElement('img');i.alt='';i.src=mediaUrl;box.appendChild(i)}
 }
 $('nextBtn').onclick=$('next2').onclick=()=>choose(true);
 
@@ -300,36 +309,61 @@ function setPulse(b){
   pulseT=setInterval(()=>{const el=$('pulse');el.classList.add('on');setTimeout(()=>el.classList.remove('on'),110)},iv);
 }
 
-/* images */
+/* media: images, GIFs, videos (stored in IndexedDB) */
+const media={
+  db:null,mem:new Map(),ids:new Set(),
+  open(){if(!this.db)this.db=new Promise((res,rej)=>{try{const r=indexedDB.open('tempo',1);r.onupgradeneeded=()=>r.result.createObjectStore('media');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}});return this.db},
+  async tx(mode,fn){const db=await this.open();return new Promise((res,rej)=>{const t=db.transaction('media',mode),st=t.objectStore('media'),rq=fn(st);t.oncomplete=()=>res(rq&&rq.result);t.onerror=t.onabort=()=>rej(t.error)})},
+  async get(id){try{return (await this.tx('readonly',st=>st.get(id)))||null}catch(e){return this.mem.get(id)||null}},
+  async set(id,v){try{await this.tx('readwrite',st=>st.put(v,id));this.ids.add(id);return true}catch(e){this.mem.set(id,v);this.ids.add(id);return false}},
+  async del(id){try{await this.tx('readwrite',st=>st.delete(id))}catch(e){}this.mem.delete(id);this.ids.delete(id)},
+  async load(){try{(await this.tx('readonly',st=>st.getAllKeys())).forEach(k=>this.ids.add(k))}catch(e){}}
+};
 function shrink(f){return new Promise((res,rej)=>{
   const im=new Image();im.onload=()=>{
-    const s=Math.min(1,900/Math.max(im.width,im.height)),c=document.createElement('canvas');
+    const s=Math.min(1,1200/Math.max(im.width,im.height)),c=document.createElement('canvas');
     c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);
     const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(im,0,0,c.width,c.height);
-    res(c.toDataURL('image/jpeg',.82));URL.revokeObjectURL(im.src);
+    URL.revokeObjectURL(im.src);c.toBlob(b=>b?res(b):rej(),'image/jpeg',.85);
   };im.onerror=rej;im.src=URL.createObjectURL(f);
 })}
+const isVideo=f=>/^video\//.test(f.type)||/\.(mp4|m4v|mov|webm)$/i.test(f.name);
+const isAnim=f=>/gif|svg/.test(f.type)||/\.(gif|svg)$/i.test(f.name);
+const isMedia=f=>isVideo(f)||/^image\//.test(f.type)||/\.(png|jpe?g|gif|webp|svg)$/i.test(f.name);
+async function prep(f){
+  if(isVideo(f))return {kind:'video',blob:f};
+  if(isAnim(f))return {kind:'image',blob:f};
+  return {kind:'image',blob:await shrink(f)};
+}
+async function saveFor(id,f){const ok=await media.set(id,await prep(f));if(!ok)$('status').textContent='This browser could not save it permanently. It will show until you close the page.';}
 $('imgBtn').onclick=()=>{if(current)$('imgIn').click()};
 $('imgIn').onchange=async e=>{
   const f=e.target.files[0];if(!f||!current)return;
-  const url=await shrink(f);
-  if(!store.set('img.'+current.id,url))$('status').textContent='Could not save that image in this browser';
+  try{await saveFor(current.id,f)}catch(err){$('status').textContent='Could not read that file'}
   render();renderList();e.target.value='';
 };
 const norm=s=>s.toLowerCase().replace(/\.[^.]+$/,'').replace(/[^a-z0-9]/g,'');
 async function bulk(e){
-  const files=[...e.target.files].filter(f=>/^image\//.test(f.type)||/\.(png|jpe?g|gif|webp|svg)$/i.test(f.name));
+  const files=[...e.target.files].filter(isMedia);
   let ok=0,skipped=[];
+  $('bulkStatus').textContent='Adding...';
   for(const f of files){
     const k=norm(f.name.split('/').pop());
     const p=POS.find(p=>norm(p.id)===k||norm(p.name)===k);
     if(!p){skipped.push(f.name);continue}
-    try{const url=await shrink(f);if(store.set('img.'+p.id,url))ok++;else skipped.push(f.name+' (storage full)')}catch(err){skipped.push(f.name)}
+    try{await saveFor(p.id,f);ok++}catch(err){skipped.push(f.name)}
   }
-  $('bulkStatus').textContent=`Added ${ok} image${ok===1?'':'s'}.`+(skipped.length?` Not matched: ${skipped.join(', ')}`:'');
+  $('bulkStatus').textContent=`Added ${ok} file${ok===1?'':'s'}.`+(skipped.length?` Not matched: ${skipped.join(', ')}`:'');
   e.target.value='';render();renderList();
 }
 $('bulkDir').onchange=bulk;$('bulkFiles').onchange=bulk;
+async function migrate(){
+  for(const p of POS){
+    let d=null;try{d=localStorage.getItem('tempo.img.'+p.id)}catch(e){}
+    if(!d)continue;
+    try{const url=JSON.parse(d);const b=await (await fetch(url)).blob();if(await media.set(p.id,{kind:'image',blob:b}))localStorage.removeItem('tempo.img.'+p.id)}catch(e){}
+  }
+}
 
 /* stage mode */
 $('stageBtn').onclick=async()=>{document.body.classList.add('stage');try{await document.documentElement.requestFullscreen()}catch(e){}};
@@ -341,16 +375,16 @@ function renderList(){
   const L=$('list');L.innerHTML='<strong>Positions</strong>';
   POS.forEach(p=>{
     const d=document.createElement('div');d.className='item'+(off.has(p.id)?' off':'');
-    const hasImg=!!store.get('img.'+p.id,null);
-    d.innerHTML=`<div class="nm">${p.name}<small>File name: ${p.id} · ${p.lvl} · ${p.bpm[0]} to ${p.bpm[1]} BPM${hasImg?' · has image':''}</small></div>`;
+    const hasImg=media.ids.has(p.id);
+    d.innerHTML=`<div class="nm">${p.name}<small>File name: ${p.id} · ${p.lvl} · ${p.bpm[0]} to ${p.bpm[1]} BPM${hasImg?' · has media':''}</small></div>`;
     const t=document.createElement('button');t.textContent=off.has(p.id)?'Turn on':'Skip';
     t.onclick=()=>{off.has(p.id)?off.delete(p.id):off.add(p.id);store.set('off',[...off]);renderList()};
     d.appendChild(t);
-    if(hasImg){const r=document.createElement('button');r.textContent='Remove image';r.onclick=()=>{try{localStorage.removeItem('tempo.img.'+p.id)}catch(e){}renderList();render()};d.appendChild(r)}
+    if(hasImg){const r=document.createElement('button');r.textContent='Remove';r.onclick=async()=>{await media.del(p.id);renderList();render()};d.appendChild(r)}
     L.appendChild(d);
   });
 }
-renderList();
+(async()=>{await media.load();await migrate();renderList();render()})();
 </script>
 </body>
 </html>
