@@ -114,6 +114,18 @@ body.stage .stageonly{display:flex}
     <div class="note">It also changes early if the song's vibe shifts a lot.</div>
   </div>
 
+  <div class="card">
+    <strong>Add images in bulk</strong>
+    <div class="note">Pick a folder or several images. Each file is matched by name, for example spoon.png or rider.jpg. The list of names is under Positions.</div>
+    <div class="row" style="margin-top:10px">
+      <label class="btn" for="bulkDir">Choose folder</label>
+      <input type="file" id="bulkDir" webkitdirectory multiple>
+      <label class="btn" for="bulkFiles">Choose images</label>
+      <input type="file" id="bulkFiles" accept="image/*" multiple>
+    </div>
+    <div class="note" id="bulkStatus"></div>
+  </div>
+
   <div class="card list" id="list"><strong>Positions</strong></div>
 </div>
 
@@ -289,17 +301,35 @@ function setPulse(b){
 }
 
 /* images */
-$('imgBtn').onclick=()=>{if(current)$('imgIn').click()};
-$('imgIn').onchange=e=>{
-  const f=e.target.files[0];if(!f||!current)return;
+function shrink(f){return new Promise((res,rej)=>{
   const im=new Image();im.onload=()=>{
     const s=Math.min(1,900/Math.max(im.width,im.height)),c=document.createElement('canvas');
-    c.width=im.width*s;c.height=im.height*s;c.getContext('2d').drawImage(im,0,0,c.width,c.height);
-    const url=c.toDataURL('image/jpeg',.82);
-    if(!store.set('img.'+current.id,url))$('status').textContent='Could not save that image in this browser';
-    render();renderList();
-  };im.src=URL.createObjectURL(f);e.target.value='';
+    c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);
+    const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height);g.drawImage(im,0,0,c.width,c.height);
+    res(c.toDataURL('image/jpeg',.82));URL.revokeObjectURL(im.src);
+  };im.onerror=rej;im.src=URL.createObjectURL(f);
+})}
+$('imgBtn').onclick=()=>{if(current)$('imgIn').click()};
+$('imgIn').onchange=async e=>{
+  const f=e.target.files[0];if(!f||!current)return;
+  const url=await shrink(f);
+  if(!store.set('img.'+current.id,url))$('status').textContent='Could not save that image in this browser';
+  render();renderList();e.target.value='';
 };
+const norm=s=>s.toLowerCase().replace(/\.[^.]+$/,'').replace(/[^a-z0-9]/g,'');
+async function bulk(e){
+  const files=[...e.target.files].filter(f=>/^image\//.test(f.type)||/\.(png|jpe?g|gif|webp|svg)$/i.test(f.name));
+  let ok=0,skipped=[];
+  for(const f of files){
+    const k=norm(f.name.split('/').pop());
+    const p=POS.find(p=>norm(p.id)===k||norm(p.name)===k);
+    if(!p){skipped.push(f.name);continue}
+    try{const url=await shrink(f);if(store.set('img.'+p.id,url))ok++;else skipped.push(f.name+' (storage full)')}catch(err){skipped.push(f.name)}
+  }
+  $('bulkStatus').textContent=`Added ${ok} image${ok===1?'':'s'}.`+(skipped.length?` Not matched: ${skipped.join(', ')}`:'');
+  e.target.value='';render();renderList();
+}
+$('bulkDir').onchange=bulk;$('bulkFiles').onchange=bulk;
 
 /* stage mode */
 $('stageBtn').onclick=async()=>{document.body.classList.add('stage');try{await document.documentElement.requestFullscreen()}catch(e){}};
@@ -312,7 +342,7 @@ function renderList(){
   POS.forEach(p=>{
     const d=document.createElement('div');d.className='item'+(off.has(p.id)?' off':'');
     const hasImg=!!store.get('img.'+p.id,null);
-    d.innerHTML=`<div class="nm">${p.name}<small>${p.lvl} · ${p.bpm[0]} to ${p.bpm[1]} BPM${hasImg?' · has image':''}</small></div>`;
+    d.innerHTML=`<div class="nm">${p.name}<small>File name: ${p.id} · ${p.lvl} · ${p.bpm[0]} to ${p.bpm[1]} BPM${hasImg?' · has image':''}</small></div>`;
     const t=document.createElement('button');t.textContent=off.has(p.id)?'Turn on':'Skip';
     t.onclick=()=>{off.has(p.id)?off.delete(p.id):off.add(p.id);store.set('off',[...off]);renderList()};
     d.appendChild(t);
