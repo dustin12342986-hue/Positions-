@@ -131,21 +131,21 @@ body.stage .stageonly{display:flex}
 
 <script>
 const POS=[
- {id:'spoon',name:'Spooning',lvl:'Easy',i:.10,bpm:[50,90],d:'Both on your sides, one behind the other. Close, slow, and easy to hold through a long song.'},
- {id:'lotus',name:'Lotus',lvl:'Medium',i:.15,bpm:[50,85],d:'Seated face to face, one partner in the other\'s lap with legs wrapped around. Built for eye contact and slow rocking.'},
- {id:'scissor',name:'Side by Side',lvl:'Easy',i:.25,bpm:[55,100],d:'Lying on your sides facing each other, legs interlaced. Low effort, lots of contact.'},
- {id:'miss',name:'Missionary',lvl:'Easy',i:.30,bpm:[60,105],d:'Face to face, one partner on top. Room for kissing and a slow, steady rhythm.'},
- {id:'lazy',name:'Lazy Dog',lvl:'Easy',i:.35,bpm:[65,110],d:'Receiving partner lies flat on their stomach, the other on top from behind. Close and unhurried.'},
- {id:'butterfly',name:'Butterfly',lvl:'Medium',i:.45,bpm:[80,120],d:'Receiving partner on their back at the edge of the bed, the other standing. Good leverage for a steady groove.'},
- {id:'rider',name:'Rider',lvl:'Easy',i:.50,bpm:[80,125],d:'One partner on top, straddling and setting the pace. The person on top rides the groove.'},
- {id:'chair',name:'The Chair',lvl:'Medium',i:.50,bpm:[80,120],d:'One partner seated in a sturdy chair, the other in their lap. Great for mid tempo rocking.'},
- {id:'kneel',name:'Kneeling Face to Face',lvl:'Medium',i:.55,bpm:[85,125],d:'Both kneeling upright, facing each other and holding on. Close, balanced, and rhythmic.'},
- {id:'reverse',name:'Reverse Rider',lvl:'Medium',i:.65,bpm:[95,135],d:'Partner on top faces away. Hands free, good view, more drive.'},
- {id:'legsup',name:'Legs Up',lvl:'Medium',i:.70,bpm:[95,140],d:'Missionary with the receiving partner\'s legs raised toward the shoulders. Deeper and more intense.'},
- {id:'edge',name:'Counter Edge',lvl:'Medium',i:.75,bpm:[100,145],d:'Receiving partner sits on the edge of a counter or table, the other standing between their legs.'},
- {id:'rear',name:'Rear Entry',lvl:'Easy',i:.80,bpm:[105,150],d:'On hands and knees, one partner behind. Lets the beat drive the motion.'},
- {id:'stand',name:'Standing',lvl:'Medium',i:.85,bpm:[110,160],d:'Standing, one behind the other or up against a wall. High energy, best in short bursts.'},
- {id:'wheel',name:'Wheelbarrow',lvl:'Advanced',i:.95,bpm:[120,180],d:'Receiving partner supports themselves on their hands while their legs are held. Playful, acrobatic, short bursts. Go carefully.'}
+ {id:'spoon',a:['spooning', 'spoons'],name:'Spooning',lvl:'Easy',i:.10,bpm:[50,90],d:'Both on your sides, one behind the other. Close, slow, and easy to hold through a long song.'},
+ {id:'lotus',a:['yablyum', 'lap', 'seated'],name:'Lotus',lvl:'Medium',i:.15,bpm:[50,85],d:'Seated face to face, one partner in the other\'s lap with legs wrapped around. Built for eye contact and slow rocking.'},
+ {id:'scissor',a:['sidebyside', 'scissors', 'sideways'],name:'Side by Side',lvl:'Easy',i:.25,bpm:[55,100],d:'Lying on your sides facing each other, legs interlaced. Low effort, lots of contact.'},
+ {id:'miss',a:['missionary'],name:'Missionary',lvl:'Easy',i:.30,bpm:[60,105],d:'Face to face, one partner on top. Room for kissing and a slow, steady rhythm.'},
+ {id:'lazy',a:['lazydog', 'proneboning'],name:'Lazy Dog',lvl:'Easy',i:.35,bpm:[65,110],d:'Receiving partner lies flat on their stomach, the other on top from behind. Close and unhurried.'},
+ {id:'butterfly',a:['butterflyposition'],name:'Butterfly',lvl:'Medium',i:.45,bpm:[80,120],d:'Receiving partner on their back at the edge of the bed, the other standing. Good leverage for a steady groove.'},
+ {id:'rider',a:['cowgirl', 'ontop', 'woman on top', 'straddle'],name:'Rider',lvl:'Easy',i:.50,bpm:[80,125],d:'One partner on top, straddling and setting the pace. The person on top rides the groove.'},
+ {id:'chair',a:['thechair', 'chairsit', 'sitting'],name:'The Chair',lvl:'Medium',i:.50,bpm:[80,120],d:'One partner seated in a sturdy chair, the other in their lap. Great for mid tempo rocking.'},
+ {id:'kneel',a:['kneeling', 'kneelingfacetoface'],name:'Kneeling Face to Face',lvl:'Medium',i:.55,bpm:[85,125],d:'Both kneeling upright, facing each other and holding on. Close, balanced, and rhythmic.'},
+ {id:'reverse',a:['reversecowgirl', 'reverserider', 'reversecowboy'],name:'Reverse Rider',lvl:'Medium',i:.65,bpm:[95,135],d:'Partner on top faces away. Hands free, good view, more drive.'},
+ {id:'legsup',a:['legsupmissionary', 'legsonshoulders', 'shoulders'],name:'Legs Up',lvl:'Medium',i:.70,bpm:[95,140],d:'Missionary with the receiving partner\'s legs raised toward the shoulders. Deeper and more intense.'},
+ {id:'edge',a:['counteredge', 'edgeofbed', 'tableedge'],name:'Counter Edge',lvl:'Medium',i:.75,bpm:[100,145],d:'Receiving partner sits on the edge of a counter or table, the other standing between their legs.'},
+ {id:'rear',a:['doggy', 'doggystyle', 'frombehind', 'rearentry', 'allfours'],name:'Rear Entry',lvl:'Easy',i:.80,bpm:[105,150],d:'On hands and knees, one partner behind. Lets the beat drive the motion.'},
+ {id:'stand',a:['standing', 'standingsex', 'wallsex'],name:'Standing',lvl:'Medium',i:.85,bpm:[110,160],d:'Standing, one behind the other or up against a wall. High energy, best in short bursts.'},
+ {id:'wheel',a:['wheelbarrow'],name:'Wheelbarrow',lvl:'Advanced',i:.95,bpm:[120,180],d:'Receiving partner supports themselves on their hands while their legs are held. Playful, acrobatic, short bursts. Go carefully.'}
 ];
 const $=id=>document.getElementById(id);
 const store={get(k,d){try{const v=localStorage.getItem('tempo.'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('tempo.'+k,JSON.stringify(v));return true}catch(e){return false}}};
@@ -349,7 +349,7 @@ async function bulk(e){
   $('bulkStatus').textContent='Adding...';
   for(const f of files){
     const k=norm(f.name.split('/').pop());
-    const p=POS.find(p=>norm(p.id)===k||norm(p.name)===k);
+    const p=POS.find(p=>norm(p.id)===k||norm(p.name)===k||(p.a||[]).some(x=>norm(x)===k));
     if(!p){skipped.push(f.name);continue}
     try{await saveFor(p.id,f);ok++}catch(err){skipped.push(f.name)}
   }
@@ -376,7 +376,7 @@ function renderList(){
   POS.forEach(p=>{
     const d=document.createElement('div');d.className='item'+(off.has(p.id)?' off':'');
     const hasImg=media.ids.has(p.id);
-    d.innerHTML=`<div class="nm">${p.name}<small>File name: ${p.id} · ${p.lvl} · ${p.bpm[0]} to ${p.bpm[1]} BPM${hasImg?' · has media':''}</small></div>`;
+    d.innerHTML=`<div class="nm">${p.name}<small>File name: ${p.id} or ${(p.a||[]).slice(0,2).join(', ')} · ${p.lvl} · ${p.bpm[0]} to ${p.bpm[1]} BPM${hasImg?' · has media':''}</small></div>`;
     const t=document.createElement('button');t.textContent=off.has(p.id)?'Turn on':'Skip';
     t.onclick=()=>{off.has(p.id)?off.delete(p.id):off.add(p.id);store.set('off',[...off]);renderList()};
     d.appendChild(t);
