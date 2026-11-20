@@ -53,6 +53,14 @@ label{color:var(--muted);font-size:15px}
 .list .nm small{display:block;color:var(--muted);font-size:14px}
 .list button{padding:7px 11px;font-size:14px}
 .off .nm{opacity:.4}
+.thumb{width:64px;height:48px;border-radius:8px;overflow:hidden;background:var(--line);flex:none;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px}
+.thumb img,.thumb video{width:100%;height:100%;object-fit:cover;display:block}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:12px}
+.mcell{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--bg)}
+.mcell .pv{aspect-ratio:4/3;background:var(--line)}
+.mcell .pv img,.mcell .pv video{width:100%;height:100%;object-fit:cover;display:block}
+.mcell select{width:100%;border:0;border-top:1px solid var(--line);border-radius:0;font-size:15px;padding:10px}
+.mcell .x{display:block;width:100%;border:0;border-top:1px solid var(--line);border-radius:0;font-size:14px;padding:8px;color:var(--muted)}
 .heard{font-size:15px;color:var(--muted);margin-top:8px;min-height:20px}
 .queue div{font-size:15px;padding:4px 0;color:var(--muted)}
 .queue div.now{color:var(--text)}
@@ -186,6 +194,20 @@ body.stage .stageonly{display:flex}
       </select>
     </div>
     <div class="note">Say "Tempo stay", "Tempo next", "Tempo go back", "Tempo slower", "Tempo faster", "Tempo follow the music", "Tempo pause" or "Tempo play". Starting with "Tempo" keeps song lyrics from setting off commands. Voice runs through your browser's speech service (Google in Chrome, Apple in Safari).</div>
+  </div>
+
+  <div class="card">
+    <h3>Match your photos and videos</h3>
+    <div class="note" style="margin-top:0">Pick as many files as you want. Each one shows a preview and a menu, so you choose which position it goes with. File names don't matter.</div>
+    <div class="row" style="margin-top:10px">
+      <label class="btn primary" for="matchIn">Choose photos and videos</label>
+      <input type="file" id="matchIn" accept="image/*,video/*,.gif,.mp4,.mov,.m4v,.webm" multiple>
+    </div>
+    <div id="matchGrid" class="mgrid"></div>
+    <div class="row" id="matchBar" style="margin-top:12px;display:none">
+      <button class="primary" id="matchSave">Save all</button><button id="matchClear">Clear</button>
+      <span class="note" id="matchStatus" style="margin:0"></span>
+    </div>
   </div>
 
   <div class="card">
@@ -773,16 +795,53 @@ async function migrate(){for(const p of POS){let d=null;try{d=localStorage.getIt
 $('stageBtn').onclick=async()=>{document.body.classList.add('stage');try{await document.documentElement.requestFullscreen()}catch(e){}};
 $('exitStage').onclick=async()=>{document.body.classList.remove('stage');try{if(document.fullscreenElement)await document.exitFullscreen()}catch(e){}};
 document.addEventListener('fullscreenchange',()=>{if(!document.fullscreenElement)document.body.classList.remove('stage')});
-function renderList(){
-  const L=$('list');L.innerHTML='<h3>Positions</h3>';
-  POS.forEach(p=>{const d=document.createElement('div');d.className='item'+(off.has(p.id)?' off':'');
+const thumbUrls=[];
+async function renderList(){
+  thumbUrls.splice(0).forEach(u=>URL.revokeObjectURL(u));
+  const L=$('list');L.innerHTML='<h3>Positions</h3><div class="note" style="margin-top:0">Tap Add to give any position its own photo or video.</div>';
+  for(const p of POS){const d=document.createElement('div');d.className='item'+(off.has(p.id)?' off':'');
     const has=media.ids.has(p.id),fav=posBonus[p.id];
+    const th=document.createElement('div');th.className='thumb';th.textContent='none';
+    if(has){const m=await media.get(p.id);if(m){const u=URL.createObjectURL(m.blob);thumbUrls.push(u);th.textContent='';
+      const el=document.createElement(m.kind==='video'?'video':'img');el.src=u;if(m.kind==='video'){el.muted=true;el.loop=true;el.autoplay=true;el.playsInline=true;el.setAttribute('playsinline','')}th.appendChild(el)}}
+    d.appendChild(th);
     const nm=document.createElement('div');nm.className='nm';nm.textContent=p.name;
-    const sm=document.createElement('small');sm.textContent=p.s+' · File name: '+p.id+' or '+p.a.slice(0,2).join(', ')+' · '+p.lvl+' · '+p.bpm[0]+' to '+p.bpm[1]+' BPM'+(has?' · has media':'')+(fav>.02?' · a favorite':'');nm.appendChild(sm);d.appendChild(nm);
-    const t=document.createElement('button');t.textContent=off.has(p.id)?'Turn on':'Skip';t.onclick=()=>{off.has(p.id)?off.delete(p.id):off.add(p.id);store.set('off',[...off]);renderList()};d.appendChild(t);
+    const sm=document.createElement('small');sm.textContent=p.s+' · '+p.lvl+' · '+p.bpm[0]+' to '+p.bpm[1]+' BPM'+(fav>.02?' · a favorite':'');nm.appendChild(sm);d.appendChild(nm);
+    const inp=document.createElement('input');inp.type='file';inp.accept='image/*,video/*,.gif,.mp4,.mov,.m4v,.webm';
+    inp.onchange=async()=>{const f=inp.files[0];if(!f)return;try{await saveFor(p.id,f)}catch(e){$('status').textContent='Could not read that file'}renderList();if(current&&current.id===p.id)render()};
+    const a=document.createElement('button');a.textContent=has?'Replace':'Add';a.onclick=()=>inp.click();d.appendChild(a);d.appendChild(inp);
     if(has){const r=document.createElement('button');r.textContent='Remove';r.onclick=async()=>{await media.del(p.id);renderList();render()};d.appendChild(r)}
-    L.appendChild(d)});
+    const t=document.createElement('button');t.textContent=off.has(p.id)?'Turn on':'Skip';t.onclick=()=>{off.has(p.id)?off.delete(p.id):off.add(p.id);store.set('off',[...off]);renderList()};d.appendChild(t);
+    L.appendChild(d)}
 }
+/* match picker: choose a position for each file */
+let matchItems=[];
+function guessPos(name){const k=norm(name.split('/').pop());return POS.find(p=>norm(p.id)===k||norm(p.name)===k||norm(p.s)===k||(p.a||[]).some(x=>norm(x)===k))}
+$('matchIn').onchange=e=>{
+  [...e.target.files].filter(isMedia).forEach(f=>{const g=guessPos(f.name);matchItems.push({f,url:URL.createObjectURL(f),pos:g?g.id:''})});
+  e.target.value='';drawMatch();
+};
+function drawMatch(){
+  const g=$('matchGrid');g.innerHTML='';$('matchBar').style.display=matchItems.length?'flex':'none';
+  matchItems.forEach((it,i)=>{const c=document.createElement('div');c.className='mcell';
+    const pv=document.createElement('div');pv.className='pv';const el=document.createElement(isVideo(it.f)?'video':'img');el.src=it.url;
+    if(isVideo(it.f)){el.muted=true;el.loop=true;el.autoplay=true;el.playsInline=true;el.setAttribute('playsinline','')}pv.appendChild(el);c.appendChild(pv);
+    const sel=document.createElement('select');sel.innerHTML='<option value="">Choose a position</option>'+POS.map(p=>'<option value="'+p.id+'">'+p.name+(media.ids.has(p.id)?' (replace)':'')+'</option>').join('');
+    sel.value=it.pos;sel.onchange=()=>{it.pos=sel.value;countMatch()};c.appendChild(sel);
+    const x=document.createElement('button');x.className='x';x.textContent='Remove';x.onclick=()=>{URL.revokeObjectURL(it.url);matchItems.splice(i,1);drawMatch()};c.appendChild(x);
+    g.appendChild(c)});
+  countMatch();
+}
+function countMatch(){const n=matchItems.filter(x=>x.pos).length;$('matchStatus').textContent=n+' of '+matchItems.length+' matched'}
+$('matchClear').onclick=()=>{matchItems.forEach(x=>URL.revokeObjectURL(x.url));matchItems=[];drawMatch()};
+$('matchSave').onclick=async()=>{
+  const todo=matchItems.filter(x=>x.pos);if(!todo.length){$('matchStatus').textContent='Choose a position for at least one file';return}
+  $('matchStatus').textContent='Saving...';let ok=0;
+  for(const it of todo){try{await saveFor(it.pos,it.f);ok++}catch(e){}}
+  const left=matchItems.filter(x=>!x.pos);matchItems.filter(x=>x.pos).forEach(x=>URL.revokeObjectURL(x.url));matchItems=left;drawMatch();
+  $('matchStatus').textContent='Saved '+ok+'.'+(left.length?' '+left.length+' still need a position.':'');$('matchBar').style.display='flex';
+  renderList();render();
+};
 (async()=>{await media.load();await migrate();await remapOld();await sessions.load();learn();renderList();renderHist()})();
 </script>
 </body>
