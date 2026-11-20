@@ -78,7 +78,7 @@ body.stage .stageonly{display:flex}
 <body>
 <div class="wrap">
   <h1>Tempo</h1>
-  <p class="sub">Play music. It breaks down each song and picks positions that fit, holding each one about as long as couples usually do.</p>
+  <p class="sub">Play music. It breaks down each song and picks Kama Sutra positions that fit, holding each one about as long as couples usually do.</p>
 
   <div class="row">
     <label class="btn primary" for="songsIn">Add songs</label>
@@ -177,7 +177,7 @@ body.stage .stageonly{display:flex}
 
   <div class="card">
     <h3>Add images, GIFs and videos in bulk</h3>
-    <div class="note" style="margin-top:0">Each file is matched by name, for example spoon.gif, cowgirl.mp4 or doggy.png. Videos play muted on a loop.</div>
+    <div class="note" style="margin-top:0">Each file is matched by name, English or Sanskrit, for example clasp.gif, indrani.mp4 or bamboo.png. Common names like cowgirl or doggy also work. Videos play muted on a loop.</div>
     <div class="row" style="margin-top:10px">
       <label class="btn" for="bulkDir">Choose folder</label>
       <input type="file" id="bulkDir" webkitdirectory multiple>
@@ -210,21 +210,25 @@ body.stage .stageonly{display:flex}
 <script>
 /* ---------------- positions ---------------- */
 const POS=[
- {id:'spoon',a:['spooning','spoons'],name:'Spooning',lvl:'Easy',i:.10,bpm:[50,90],d:'Both on your sides, one behind the other. Close, slow, and easy to hold through a long song.'},
- {id:'lotus',a:['yablyum','lap','seated'],name:'Lotus',lvl:'Medium',i:.15,bpm:[50,85],d:'Seated face to face, one partner in the other\'s lap with legs wrapped around. Built for eye contact and slow rocking.'},
- {id:'scissor',a:['sidebyside','scissors','sideways'],name:'Side by Side',lvl:'Easy',i:.25,bpm:[55,100],d:'Lying on your sides facing each other, legs interlaced. Low effort, lots of contact.'},
- {id:'miss',a:['missionary'],name:'Missionary',lvl:'Easy',i:.30,bpm:[60,105],d:'Face to face, one partner on top. Room for kissing and a slow, steady rhythm.'},
- {id:'lazy',a:['lazydog','proneboning'],name:'Lazy Dog',lvl:'Easy',i:.35,bpm:[65,110],d:'Receiving partner lies flat on their stomach, the other on top from behind. Close and unhurried.'},
- {id:'butterfly',a:['butterflyposition'],name:'Butterfly',lvl:'Medium',i:.45,bpm:[80,120],d:'Receiving partner on their back at the edge of the bed, the other standing. Good leverage for a steady groove.'},
- {id:'rider',a:['cowgirl','ontop','woman on top','straddle'],name:'Rider',lvl:'Easy',i:.50,bpm:[80,125],d:'One partner on top, straddling and setting the pace. The person on top rides the groove.'},
- {id:'chair',a:['thechair','chairsit','sitting'],name:'The Chair',lvl:'Medium',i:.50,bpm:[80,120],d:'One partner seated in a sturdy chair, the other in their lap. Great for mid tempo rocking.'},
- {id:'kneel',a:['kneeling','kneelingfacetoface'],name:'Kneeling Face to Face',lvl:'Medium',i:.55,bpm:[85,125],d:'Both kneeling upright, facing each other and holding on. Close, balanced, and rhythmic.'},
- {id:'reverse',a:['reversecowgirl','reverserider','reversecowboy'],name:'Reverse Rider',lvl:'Medium',i:.65,bpm:[95,135],d:'Partner on top faces away. Hands free, good view, more drive.'},
- {id:'legsup',a:['legsupmissionary','legsonshoulders','shoulders'],name:'Legs Up',lvl:'Medium',i:.70,bpm:[95,140],d:'Missionary with the receiving partner\'s legs raised toward the shoulders. Deeper and more intense.'},
- {id:'edge',a:['counteredge','edgeofbed','tableedge'],name:'Counter Edge',lvl:'Medium',i:.75,bpm:[100,145],d:'Receiving partner sits on the edge of a counter or table, the other standing between their legs.'},
- {id:'rear',a:['doggy','doggystyle','frombehind','rearentry','allfours'],name:'Rear Entry',lvl:'Easy',i:.80,bpm:[105,150],d:'On hands and knees, one partner behind. Lets the beat drive the motion.'},
- {id:'stand',a:['standing','standingsex','wallsex'],name:'Standing',lvl:'Medium',i:.85,bpm:[110,160],d:'Standing, one behind the other or up against a wall. High energy, best in short bursts.'},
- {id:'wheel',a:['wheelbarrow'],name:'Wheelbarrow',lvl:'Advanced',i:.95,bpm:[120,180],d:'Receiving partner supports themselves on their hands while their legs are held. Playful, acrobatic, short bursts. Go carefully.'}
+ {id:'clasp',s:'Samputaka',a:['clasping','samputaka','clasping side','spoon','spooning','scissor','sidebyside'],name:'Clasping, Side by Side',lvl:'Easy',i:.10,bpm:[50,90],d:'Lying on your sides facing each other, legs stretched out along each other. Close, slow, and easy to hold through a long song.'},
+ {id:'twining',s:'Veshtitaka',a:['veshtitaka','twining creeper'],name:'Twining',lvl:'Easy',i:.18,bpm:[50,95],d:'From the clasping position, the receiving partner lays one thigh across the other\'s thigh, like a vine wrapping a tree.'},
+ {id:'claspface',s:'Samputaka',a:['clasping face','miss','missionary','lazy','lazydog'],name:'Clasping, Face to Face',lvl:'Easy',i:.25,bpm:[55,100],d:'Receiving partner on their back, both with legs stretched straight along each other. Full body contact and small movements.'},
+ {id:'pressing',s:'Piditaka',a:['piditaka'],name:'Pressing',lvl:'Easy',i:.30,bpm:[60,105],d:'Start in a clasping position, then the receiving partner presses their thighs firmly together around the other. Tight and intimate.'},
+ {id:'lotus',s:'Padmasana',a:['padmasana','lotuslike'],name:'Lotus',lvl:'Medium',i:.35,bpm:[60,110],d:'Receiving partner on their back with legs folded and crossed over each other, like a seated lotus. Needs some flexibility.'},
+ {id:'mare',s:'Vadavaka',a:['vadavaka','mares'],name:'Mare\'s Position',lvl:'Medium',i:.40,bpm:[65,115],d:'Once joined, the receiving partner stays still and grips with their inner muscles instead of moving. Slow, controlled, and focused.'},
+ {id:'widely',s:'Utphallaka',a:['utphallaka','widelyopened'],name:'Widely Opened',lvl:'Medium',i:.45,bpm:[75,120],d:'Receiving partner lowers their head and lifts their hips, arching up from the bed. A pillow under the hips helps.'},
+ {id:'yawning',s:'Vijrimbhitaka',a:['vijrimbhitaka','butterfly'],name:'Yawning',lvl:'Medium',i:.50,bpm:[80,125],d:'Receiving partner on their back raises their thighs and keeps them wide apart.'},
+ {id:'lead',s:'Purushayita',a:['purushayita','takingthelead','rider','cowgirl','ontop','chair','kneel','kneeling'],name:'Taking the Lead',lvl:'Easy',i:.55,bpm:[80,130],d:'From the chapter on the woman acting the part of the man. One partner on top sets the pace and leads the rhythm.'},
+ {id:'crab',s:'Karkata',a:['karkata'],name:'Crab',lvl:'Medium',i:.58,bpm:[85,125],d:'Receiving partner on their back draws both legs in, knees folded toward the stomach.'},
+ {id:'indrani',s:'Indranika',a:['indranika','positionofindrani'],name:'Indrani',lvl:'Advanced',i:.60,bpm:[85,130],d:'Named for the wife of the god Indra. Receiving partner draws both knees up toward the chest with legs folded at the sides. The text says it is learned only by practice.'},
+ {id:'rising',s:'Bhugnaka',a:['bhugnaka','raising','legsup','legsupmissionary'],name:'Rising',lvl:'Medium',i:.65,bpm:[90,135],d:'Receiving partner on their back raises both legs straight up.'},
+ {id:'pressed',s:'Utpiditaka',a:['utpiditaka'],name:'Pressed',lvl:'Medium',i:.68,bpm:[90,135],d:'Receiving partner\'s legs are drawn up and held against the other\'s chest. Close and deep.'},
+ {id:'turning',s:'Paravrittaka',a:['paravrittaka','reverse','reversecowgirl','reverserider'],name:'Turning',lvl:'Advanced',i:.70,bpm:[90,135],d:'The partner on top turns all the way around without separating. The text says it takes practice, so go slowly.'},
+ {id:'bamboo',s:'Venudaritaka',a:['venudaritaka','splittingofabamboo','splittingbamboo','shoulders','legsonshoulders'],name:'Splitting of a Bamboo',lvl:'Advanced',i:.75,bpm:[95,145],d:'One leg rests on the partner\'s shoulder while the other stretches out, then they swap, again and again. Try swapping on the beat.'},
+ {id:'nail',s:'Shulachitaka',a:['shulachitaka','fixingofanail','fixinganail'],name:'Fixing of a Nail',lvl:'Advanced',i:.78,bpm:[100,145],d:'One leg stretched out, the other raised high with the foot near the partner\'s head. Needs real flexibility, so go carefully.'},
+ {id:'cow',s:'Dhenuka',a:['dhenuka','congressofacow','rear','doggy','doggystyle','frombehind','rearentry','allfours'],name:'Congress of a Cow',lvl:'Easy',i:.82,bpm:[105,155],d:'Receiving partner on hands and feet, the other behind. Lets the beat drive the motion.'},
+ {id:'supported',s:'Sthita',a:['sthita','supportedcongress','stand','standing','wallsex','edge','counteredge'],name:'Supported Congress',lvl:'Medium',i:.85,bpm:[110,160],d:'Standing, leaning on each other or against a wall or pillar.'},
+ {id:'suspended',s:'Avalambitaka',a:['avalambitaka','suspendedcongress','wheel','wheelbarrow','carry'],name:'Suspended Congress',lvl:'Advanced',i:.95,bpm:[115,180],d:'One partner leans against a wall and holds the other up, who wraps their arms around the neck and braces their feet on the wall. Short bursts only, and lift safely.'}
 ];
 const $=id=>document.getElementById(id);
 const clamp=v=>Math.max(0,Math.min(1,v));
@@ -403,7 +407,7 @@ let mediaUrl=null,renderSeq=0;
 function paceText(b){return !b?'':b>=130?'Move on every other beat':b<75?'One long, slow movement per beat':'Move with the beat'}
 async function render(){
   if(!current)return;
-  $('pName').textContent=current.name;$('pLvl').textContent=current.lvl;$('pDesc').textContent=current.d;
+  $('pName').textContent=current.name;$('pLvl').textContent=current.s+' · '+current.lvl;$('pDesc').textContent=current.d;
   $('pPace').textContent=paceText(curBpm());
   const seq=++renderSeq,m=await media.get(current.id);if(seq!==renderSeq)return;
   const box=$('pImg');if(mediaUrl){URL.revokeObjectURL(mediaUrl);mediaUrl=null}
@@ -667,6 +671,9 @@ async function bulk(e){
   $('bulkStatus').textContent=`Added ${ok} file${ok===1?'':'s'}.`+(skipped.length?` Not matched: ${skipped.join(', ')}`:'');e.target.value='';render();renderList();
 }
 $('bulkDir').onchange=bulk;$('bulkFiles').onchange=bulk;
+async function remapOld(){const olds=['spoon','scissor','miss','lazy','butterfly','rider','chair','kneel','reverse','legsup','edge','rear','stand','wheel'];
+  for(const o of olds){if(!media.ids.has(o))continue;const p=POS.find(p=>p.a.includes(o));if(!p)continue;
+    if(!media.ids.has(p.id)){const m=await media.get(o);if(m&&await media.set(p.id,m))await media.del(o)}}}
 async function migrate(){for(const p of POS){let d=null;try{d=localStorage.getItem('tempo.img.'+p.id)}catch(e){}if(!d)continue;
   try{const b=await (await fetch(JSON.parse(d))).blob();if(await media.set(p.id,{kind:'image',blob:b}))localStorage.removeItem('tempo.img.'+p.id)}catch(e){}}}
 
@@ -679,12 +686,12 @@ function renderList(){
   POS.forEach(p=>{const d=document.createElement('div');d.className='item'+(off.has(p.id)?' off':'');
     const has=media.ids.has(p.id),fav=posBonus[p.id];
     const nm=document.createElement('div');nm.className='nm';nm.textContent=p.name;
-    const sm=document.createElement('small');sm.textContent='File name: '+p.id+' or '+p.a.slice(0,2).join(', ')+' · '+p.lvl+' · '+p.bpm[0]+' to '+p.bpm[1]+' BPM'+(has?' · has media':'')+(fav>.02?' · a favorite':'');nm.appendChild(sm);d.appendChild(nm);
+    const sm=document.createElement('small');sm.textContent=p.s+' · File name: '+p.id+' or '+p.a.slice(0,2).join(', ')+' · '+p.lvl+' · '+p.bpm[0]+' to '+p.bpm[1]+' BPM'+(has?' · has media':'')+(fav>.02?' · a favorite':'');nm.appendChild(sm);d.appendChild(nm);
     const t=document.createElement('button');t.textContent=off.has(p.id)?'Turn on':'Skip';t.onclick=()=>{off.has(p.id)?off.delete(p.id):off.add(p.id);store.set('off',[...off]);renderList()};d.appendChild(t);
     if(has){const r=document.createElement('button');r.textContent='Remove';r.onclick=async()=>{await media.del(p.id);renderList();render()};d.appendChild(r)}
     L.appendChild(d)});
 }
-(async()=>{await media.load();await migrate();await sessions.load();learn();renderList();renderHist()})();
+(async()=>{await media.load();await migrate();await remapOld();await sessions.load();learn();renderList();renderHist()})();
 </script>
 </body>
 </html>
