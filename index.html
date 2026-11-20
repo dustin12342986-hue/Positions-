@@ -190,7 +190,7 @@ body.stage .stageonly{display:flex}
 
   <div class="card">
     <h3>Add images, GIFs and videos in bulk</h3>
-    <div class="note" style="margin-top:0">Each file is matched by name, English or Sanskrit, for example clasp.gif, indrani.mp4 or bamboo.png. Common names like cowgirl or doggy also work. Videos play muted on a loop.</div>
+    <div class="note" style="margin-top:0">Each file is matched by name, English or Sanskrit, for example lotus.gif, indrani.mp4 or sammukha.png. Common names like cowgirl or doggy also work. Videos play muted on a loop.</div>
     <div class="row" style="margin-top:10px">
       <label class="btn" for="bulkDir">Choose folder</label>
       <input type="file" id="bulkDir" webkitdirectory multiple>
@@ -223,25 +223,21 @@ body.stage .stageonly{display:flex}
 <script>
 /* ---------------- positions ---------------- */
 const POS=[
- {id:'clasp',s:'Samputaka',a:['clasping','samputaka','clasping side','spoon','spooning','scissor','sidebyside'],name:'Clasping, Side by Side',lvl:'Easy',i:.10,bpm:[50,90],d:'Lying on your sides facing each other, legs stretched out along each other. Close, slow, and easy to hold through a long song.'},
- {id:'twining',s:'Veshtitaka',a:['veshtitaka','twining creeper'],name:'Twining',lvl:'Easy',i:.18,bpm:[50,95],d:'From the clasping position, the receiving partner lays one thigh across the other\'s thigh, like a vine wrapping a tree.'},
- {id:'claspface',s:'Samputaka',a:['clasping face','miss','missionary','lazy','lazydog'],name:'Clasping, Face to Face',lvl:'Easy',i:.25,bpm:[55,100],d:'Receiving partner on their back, both with legs stretched straight along each other. Full body contact and small movements.'},
- {id:'pressing',s:'Piditaka',a:['piditaka'],name:'Pressing',lvl:'Easy',i:.30,bpm:[60,105],d:'Start in a clasping position, then the receiving partner presses their thighs firmly together around the other. Tight and intimate.'},
- {id:'lotus',s:'Padmasana',a:['padmasana','lotuslike'],name:'Lotus',lvl:'Medium',i:.35,bpm:[60,110],d:'Receiving partner on their back with legs folded and crossed over each other, like a seated lotus. Needs some flexibility.'},
- {id:'mare',s:'Vadavaka',a:['vadavaka','mares'],name:'Mare\'s Position',lvl:'Medium',i:.40,bpm:[65,115],d:'Once joined, the receiving partner stays still and grips with their inner muscles instead of moving. Slow, controlled, and focused.'},
- {id:'widely',s:'Utphallaka',a:['utphallaka','widelyopened'],name:'Widely Opened',lvl:'Medium',i:.45,bpm:[75,120],d:'Receiving partner lowers their head and lifts their hips, arching up from the bed. A pillow under the hips helps.'},
- {id:'yawning',s:'Vijrimbhitaka',a:['vijrimbhitaka','butterfly'],name:'Yawning',lvl:'Medium',i:.50,bpm:[80,125],d:'Receiving partner on their back raises their thighs and keeps them wide apart.'},
- {id:'lead',s:'Purushayita',a:['purushayita','takingthelead','rider','cowgirl','ontop','chair','kneel','kneeling'],name:'Taking the Lead',lvl:'Easy',i:.55,bpm:[80,130],d:'From the chapter on the woman acting the part of the man. One partner on top sets the pace and leads the rhythm.'},
- {id:'crab',s:'Karkata',a:['karkata'],name:'Crab',lvl:'Medium',i:.58,bpm:[85,125],d:'Receiving partner on their back draws both legs in, knees folded toward the stomach.'},
- {id:'indrani',s:'Indranika',a:['indranika','positionofindrani'],name:'Indrani',lvl:'Advanced',i:.60,bpm:[85,130],d:'Named for the wife of the god Indra. Receiving partner draws both knees up toward the chest with legs folded at the sides. The text says it is learned only by practice.'},
- {id:'rising',s:'Bhugnaka',a:['bhugnaka','raising','legsup','legsupmissionary'],name:'Rising',lvl:'Medium',i:.65,bpm:[90,135],d:'Receiving partner on their back raises both legs straight up.'},
- {id:'pressed',s:'Utpiditaka',a:['utpiditaka'],name:'Pressed',lvl:'Medium',i:.68,bpm:[90,135],d:'Receiving partner\'s legs are drawn up and held against the other\'s chest. Close and deep.'},
- {id:'turning',s:'Paravrittaka',a:['paravrittaka','reverse','reversecowgirl','reverserider'],name:'Turning',lvl:'Advanced',i:.70,bpm:[90,135],d:'The partner on top turns all the way around without separating. The text says it takes practice, so go slowly.'},
- {id:'bamboo',s:'Venudaritaka',a:['venudaritaka','splittingofabamboo','splittingbamboo','shoulders','legsonshoulders'],name:'Splitting of a Bamboo',lvl:'Advanced',i:.75,bpm:[95,145],d:'One leg rests on the partner\'s shoulder while the other stretches out, then they swap, again and again. Try swapping on the beat.'},
- {id:'nail',s:'Shulachitaka',a:['shulachitaka','fixingofanail','fixinganail'],name:'Fixing of a Nail',lvl:'Advanced',i:.78,bpm:[100,145],d:'One leg stretched out, the other raised high with the foot near the partner\'s head. Needs real flexibility, so go carefully.'},
- {id:'cow',s:'Dhenuka',a:['dhenuka','congressofacow','rear','doggy','doggystyle','frombehind','rearentry','allfours'],name:'Congress of a Cow',lvl:'Easy',i:.82,bpm:[105,155],d:'Receiving partner on hands and feet, the other behind. Lets the beat drive the motion.'},
- {id:'supported',s:'Sthita',a:['sthita','supportedcongress','stand','standing','wallsex','edge','counteredge'],name:'Supported Congress',lvl:'Medium',i:.85,bpm:[110,160],d:'Standing, leaning on each other or against a wall or pillar.'},
- {id:'suspended',s:'Avalambitaka',a:['avalambitaka','suspendedcongress','wheel','wheelbarrow','carry'],name:'Suspended Congress',lvl:'Advanced',i:.95,bpm:[115,180],d:'One partner leans against a wall and holds the other up, who wraps their arms around the neck and braces their feet on the wall. Short bursts only, and lift safely.'}
+ {id:'curled',s:'Modern',a:['curledangel','spoon','spooning','clasp','clasping'],name:'The Curled Angel',lvl:'Easy',i:.08,bpm:[50,85],d:'Both on your sides, giver behind, knees curled up toward your chests. Cozy and slow.'},
+ {id:'nirvana',s:'Coital Alignment Technique',a:['cat','coitalalignment','pressing'],name:'Nirvana',lvl:'Easy',i:.12,bpm:[50,85],d:'Receiver lies flat with legs together, giver on top resting on their forearms. Rock together instead of thrusting.'},
+ {id:'lateral',s:'Parshva Samputa',a:['parshva','parshvasamputa','lateralbox','sidebyside','scissor'],name:'Lateral Box',lvl:'Easy',i:.18,bpm:[50,95],d:'Both on your sides, facing each other. Close, easy, lots of eye contact.'},
+ {id:'milk',s:'Kshiraniraka',a:['milkandwater','milkandwaterembrace','kshiraniraka','chair'],name:'The Milk and Water Embrace',lvl:'Easy',i:.22,bpm:[55,95],d:'Giver seated, receiver on their lap with their back against the giver\'s chest. Hands are free to roam.'},
+ {id:'lotus',s:'Padmasana',a:['padmasana','yabyum'],name:'Lotus',lvl:'Medium',i:.25,bpm:[55,100],d:'Giver sits cross-legged, receiver lowers on top with legs wrapped around their back. Face to face, slow rocking.'},
+ {id:'closedbox',s:'Uttana Samputa',a:['uttana','uttanasamputa','closedbox','miss','missionary','claspface','lazy'],name:'Closed Box',lvl:'Easy',i:.30,bpm:[60,105],d:'Missionary, face to face. Room for kissing and a steady rhythm.'},
+ {id:'envelop',s:'Veshtitaka',a:['envelopment','veshititaka','veshtitaka','twining','mare'],name:'Envelopment',lvl:'Easy',i:.35,bpm:[60,110],d:'A technique more than a position. In any position, the receiver crosses their ankles or knees to squeeze tighter.'},
+ {id:'utphallaka',s:'Utphallaka',a:['widely','widelyopened','bridge','glutebridge'],name:'Utphallaka',lvl:'Medium',i:.48,bpm:[75,120],d:'Receiver lifts their hips into a glute bridge, giver kneels between their legs.'},
+ {id:'indrani',s:'Indranika',a:['indranika','crab','pressed'],name:'Indrani',lvl:'Medium',i:.55,bpm:[80,125],d:'Receiver on their back with knees pulled to the chest, giver kneeling.'},
+ {id:'virsha',s:'Virsha',a:['reverse','reversecowgirl','reverserider','turning','rider','cowgirl','lead','kneel'],name:'Virsha',lvl:'Medium',i:.62,bpm:[85,130],d:'Reverse cowgirl. Receiver on top, facing away, setting the pace.'},
+ {id:'yawn',s:'Jrimbhitaka',a:['jrimbhitaka','theyawn','yawning','legsup','rising','shoulders','bamboo','nail','butterfly'],name:'The Yawn',lvl:'Medium',i:.68,bpm:[90,135],d:'Receiver on their back with legs resting on the giver\'s shoulders.'},
+ {id:'dhenuka',s:'Dhenuka',a:['cow','doggy','doggystyle','rear','rearentry','frombehind','allfours'],name:'Dhenuka',lvl:'Easy',i:.78,bpm:[100,150],d:'Doggy style. Receiver on hands and knees, giver behind. Let the beat drive it.'},
+ {id:'tripadam',s:'Tripadam',a:['tripod','threelegs'],name:'Tripadam',lvl:'Medium',i:.82,bpm:[105,150],d:'Both standing face to face. The receiver lifts one leg and the giver holds it under the knee, so three feet stay on the floor.'},
+ {id:'sammukha',s:'Sammukha',a:['wall','supported','stand','standing','wallsex','edge','counteredge'],name:'Sammukha',lvl:'Medium',i:.86,bpm:[110,160],d:'Standing face to face. Receiver braces their back against a wall with legs wide, giver in front.'},
+ {id:'janukurpara',s:'Janukurpara',a:['standingcarry','carry','suspended','wheel','wheelbarrow'],name:'Janukurpara',lvl:'Advanced',i:.95,bpm:[115,180],d:'The standing carry. Giver lifts and holds the receiver, forearms locked under their knees, receiver\'s arms around the giver\'s neck. Short bursts, lift safely.'}
 ];
 const $=id=>document.getElementById(id);
 const clamp=v=>Math.max(0,Math.min(1,v));
@@ -767,7 +763,7 @@ async function bulk(e){
   $('bulkStatus').textContent=`Added ${ok} file${ok===1?'':'s'}.`+(skipped.length?` Not matched: ${skipped.join(', ')}`:'');e.target.value='';render();renderList();
 }
 $('bulkDir').onchange=bulk;$('bulkFiles').onchange=bulk;
-async function remapOld(){const olds=['spoon','scissor','miss','lazy','butterfly','rider','chair','kneel','reverse','legsup','edge','rear','stand','wheel'];
+async function remapOld(){const olds=['spoon','scissor','miss','lazy','butterfly','rider','chair','kneel','reverse','legsup','edge','rear','stand','wheel','clasp','twining','claspface','pressing','mare','widely','yawning','lead','crab','rising','pressed','turning','bamboo','nail','cow','supported','suspended'];
   for(const o of olds){if(!media.ids.has(o))continue;const p=POS.find(p=>p.a.includes(o));if(!p)continue;
     if(!media.ids.has(p.id)){const m=await media.get(o);if(m&&await media.set(p.id,m))await media.del(o)}}}
 async function migrate(){for(const p of POS){let d=null;try{d=localStorage.getItem('tempo.img.'+p.id)}catch(e){}if(!d)continue;
