@@ -155,6 +155,19 @@ body.stage .stageonly{display:flex}
   </div>
 
   <div class="card">
+    <div class="row" style="justify-content:space-between"><h3 style="margin:0">Voice guide</h3><button id="guideBtn">Guide: off</button></div>
+    <div class="note">Talks you through each position, gives pace and breathing cues that follow the song, warns you before a change, and checks in now and then. Uses your device's own voices.</div>
+    <div class="row" style="justify-content:space-between;margin-top:10px"><label for="gVoice">Voice</label><select id="gVoice" style="max-width:60%"></select></div>
+    <div class="row" style="justify-content:space-between;margin-top:10px"><label for="gTone">Tone</label>
+      <select id="gTone"><option value="calm">Calm</option><option value="playful">Playful</option></select></div>
+    <div class="row" style="justify-content:space-between;margin-top:10px"><label for="gTalk">How much it talks</label>
+      <select id="gTalk"><option value="1">Just the changes</option><option value="2" selected>Normal</option><option value="3">Chatty</option></select></div>
+    <div class="row" style="justify-content:space-between;margin-top:10px"><label for="gDesc">Explain each position</label>
+      <select id="gDesc"><option value="1">Yes</option><option value="0">Name only</option></select></div>
+    <div class="row" style="margin-top:10px"><button id="gTest">Test the voice</button></div>
+  </div>
+
+  <div class="card">
     <h3>Settings</h3>
     <div class="row" style="justify-content:space-between">
       <label for="paceSel">How often to change</label>
@@ -390,9 +403,9 @@ function setPos(p,why){
   if(current)history.push({p:current});
   if(history.length>30)history.shift();
   current=p;since=Date.now();
-  sessLog(p,why);render();renderHold();
+  sessLog(p,why);render();renderHold();guide.onPosition(p,why);
 }
-function goBack(){const h=history.pop();if(!h)return;if(current)sessLogEnd();current=h.p;since=Date.now();sessLog(current,'back');render();renderHold()}
+function goBack(){const h=history.pop();if(!h)return;if(current)sessLogEnd();current=h.p;since=Date.now();sessLog(current,'back');render();renderHold();guide.onPosition(current,'back')}
 function setLocked(v){locked=v;['stayBtn','stay2'].forEach(id=>{$(id).classList.toggle('on',v);$(id).textContent=v?'Staying':'Stay'});renderHold()}
 $('stayBtn').onclick=$('stay2').onclick=()=>setLocked(!locked);
 $('nextBtn').onclick=$('next2').onclick=()=>manualNext();
@@ -443,7 +456,7 @@ async function playIdx(i){
   renderQueue();$('songName').textContent=s.name;
   await ensureAnalyzed(s);
   if(s.err){$('status').textContent='Could not read '+s.name+'. Skipping.';return playIdx(qi+1)}
-  planSong(s,true);
+  planSong(s,true);guide.lastSec=null;
   if(audio.src)URL.revokeObjectURL(audio.src);
   audio.src=URL.createObjectURL(s.f);
   try{await audio.play();$('playBtn').textContent='Pause'}catch(e){$('playBtn').textContent='Play';$('status').textContent='Tap Play to start'}
@@ -518,7 +531,7 @@ function fileLoop(){
     renderPlan(s);
   }
   const h=$('head');if(h)h.style.left=(t/s.a.dur*100)+'%';
-  const sec=s.a.sections.find(x=>t>=x.start&&t<x.end);$('secNow').textContent=sec?'Now: '+sec.label+' · '+fmt(t)+' of '+fmt(s.a.dur):'';
+  const sec=s.a.sections.find(x=>t>=x.start&&t<x.end);if(sec&&!audio.paused&&sec.label!==guide.lastSec){guide.onSection(sec.label,guide.lastSec);guide.lastSec=sec.label}$('secNow').textContent=sec?'Now: '+sec.label+' · '+fmt(t)+' of '+fmt(s.a.dur):'';
   // beat pulse locked to the song's beat
   if(!audio.paused){const b=s.a.bpm>=130?s.a.bpm/2:s.a.bpm,fr=(((t-s.a.phase)*b/60)%1+1)%1;$('pulse').classList.toggle('on',fr<.13)}
 }
@@ -581,7 +594,7 @@ $('tapBtn').onclick=()=>{const t=performance.now();if(taps.length&&t-taps[taps.l
 function tapTick(){if(mode!=='tap'||!current||locked||paceMult()===0)return;if((Date.now()-since)/1000>holdFor(tapInt())*paceMult())setPos(pick(tapInt(),live.bpm,[...recent(),current.id]),'timer')}
 
 function setMode(m){mode=m;$('songCard').classList.toggle('show',m==='file');$('liveCard').classList.toggle('show',m==='mic');$('manualCard').classList.toggle('show',m==='tap')}
-setInterval(()=>{if(mode==='file')fileLoop();if(mode==='tap')tapTick();renderHold();renderSess()},250);
+setInterval(()=>{if(mode==='file')fileLoop();if(mode==='tap')tapTick();renderHold();renderSess();guide.tick()},250);
 
 /* ---------------- voice ---------------- */
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;let rec=null,voiceOn=false;
@@ -596,9 +609,10 @@ function startVoice(){
 }
 function stopVoice(){voiceOn=false;try{rec&&rec.stop()}catch(e){}$('voiceBtn').textContent='Voice: off';$('voiceBtn').classList.remove('on')}
 function handleSpeech(raw){
+  if(guide.busy())return;
   let t=raw.toLowerCase().trim();
   if(+$('wakeSel').value){const m=t.match(/\b(tempo|temple|tempa|tempos|tempe)\b(.*)$/);if(!m)return;t=m[2]}
-  const say=a=>{$('heard').textContent='Heard "'+raw.trim()+'" · '+a;sessCmd()};
+  const say=a=>{$('heard').textContent='Heard "'+raw.trim()+'" · '+a;sessCmd();guide.confirm(a)};
   if(/\b(unlock|auto|follow|let it (go|flow)|go with)\b/.test(t)){setLocked(false);say('following the music')}
   else if(/\b(stay|hold|keep|lock|don'?t (move|change|switch))\b/.test(t)){setLocked(true);say('staying here')}
   else if(/\b(back|previous|last one|before)\b/.test(t)){goBack();say('going back')}
@@ -610,6 +624,88 @@ function handleSpeech(raw){
   else $('heard').textContent='Heard "'+raw.trim()+'" · no command';
 }
 
+
+/* ---------------- voice guide ---------------- */
+const guide={
+  on:false,speaking:false,quietUntil:0,lastTalk:0,lastBreath:0,lastCheck:0,warned:null,lastSec:null,warmed:false,
+  L:{
+    calm:{
+      intro:['Next up, {n}.','Let\'s move into {n}.','Ease into {n}.','Time for {n}.'],
+      first:['Let\'s start with {n}.','We\'ll begin with {n}.'],
+      back:['Going back to {n}.'],
+      warn:['About thirty seconds left in this one.','We\'ll change in about half a minute.'],
+      up:['The song is building. Let the pace rise with it.','It\'s picking up here. Follow the beat.'],
+      down:['The music is easing off. Slow down with it.','Softer section. Take it slow.'],
+      breath:['Breathe together. In slowly, out slowly.','Match your breathing for a few beats.','Relax your shoulders and stay close.','Slow breath in, long breath out.','Make eye contact for a moment.'],
+      check:['Want to stay here or switch? Just tell me.','How is this one? Say stay, or say next.'],
+      warm:['Welcome. Take a minute to settle in and get close. Slow breaths. I\'ll pick the first position with the music.'],
+      cool:['Nice. Take your time now. Slow your breathing together and just stay close for a while.'],
+    },
+    playful:{
+      intro:['Okay, switch it up. {n}.','Here we go. {n}.','New one. {n}.','Ready? {n}.'],
+      first:['Let\'s kick things off with {n}.'],
+      back:['Back to {n}. Good call.'],
+      warn:['Thirty seconds left. Make them count.','Heads up, a change is coming.'],
+      up:['Here comes the build. Pick it up.','Beat\'s getting stronger. Go with it.'],
+      down:['Song\'s cooling down. Ease off and enjoy it.','Slow part. Take your time.'],
+      breath:['Don\'t forget to breathe.','Stay with each other. Eyes up.','Find the beat together.','Little smile. You\'re doing great.'],
+      check:['Loving this one? Say stay. Bored? Say next.','Stay or switch? Your call.'],
+      warm:['Alright, settle in, get close, and get comfortable. I\'ll take it from here once the music starts.'],
+      cool:['That\'s a wrap. Catch your breath, get some water, and stay cozy.'],
+    }
+  },
+  line(k,n){const a=this.L[$('gTone').value][k];return a[Math.floor(Math.random()*a.length)].replace('{n}',n||'')},
+  voice(){const v=speechSynthesis.getVoices(),id=$('gVoice').value;return v.find(x=>x.voiceURI===id)||null},
+  say(text,priority){
+    if(!this.on||!('speechSynthesis' in window))return;
+    if(priority)speechSynthesis.cancel();else if(this.speaking)return;
+    const u=new SpeechSynthesisUtterance(text),v=this.voice();if(v){u.voice=v;u.lang=v.lang}
+    u.rate=$('gTone').value==='calm'?.92:1.02;u.pitch=1;
+    const vol=audio.volume;
+    u.onstart=()=>{this.speaking=true;if(!audio.paused)audio.volume=Math.min(vol,.35)};
+    u.onend=u.onerror=()=>{this.speaking=false;audio.volume=1;this.quietUntil=Date.now()+900};
+    this.lastTalk=Date.now();speechSynthesis.speak(u);
+  },
+  busy(){return this.speaking||Date.now()<this.quietUntil},
+  onPosition(p,why){
+    if(!this.on)return;this.warned=null;
+    let t=this.line(why==='back'?'back':(history.length?'intro':'first'),p.name);
+    if(!this.warmed){this.warmed=true;t=this.line('warm')+' '+t}
+    if(+$('gDesc').value)t+=' '+p.d;
+    const pc=paceText(curBpm());if(pc)t+=' '+pc+'.';
+    this.say(t,true);this.lastBreath=this.lastCheck=Date.now();
+  },
+  onSection(label,prev){
+    if(!this.on||+$('gTalk').value<2||!prev)return;
+    const rank={Intro:0,Soft:0,Groove:1,Peak:2};
+    if(rank[label]>rank[prev])this.say(this.line('up'));else if(rank[label]<rank[prev])this.say(this.line('down'));
+  },
+  confirm(text){if(this.on&&!/next|back|slower|faster/.test(text))this.say(text.charAt(0).toUpperCase()+text.slice(1)+'.',true)},
+  warmup(){if(this.on&&!this.warmed){this.warmed=true;this.say(this.line('warm'),true)}},
+  cooldown(){if(this.on)this.say(this.line('cool'),true)},
+  tick(){
+    if(!this.on||!current||this.busy())return;
+    const talk=+$('gTalk').value,now=Date.now(),nx=locked?null:nextChangeIn();
+    if(nx!=null&&nx<=32&&nx>20&&this.warned!==current.id){this.warned=current.id;this.say(this.line('warn'));return}
+    if(talk>=2&&now-this.lastCheck>(talk===3?150000:240000)&&now-since>60000){this.lastCheck=now;this.say(this.line('check'));return}
+    if(talk>=2&&now-this.lastBreath>(talk===3?60000:110000)&&now-this.lastTalk>25000){this.lastBreath=now;this.say(this.line('breath'))}
+  }
+};
+function loadVoices(){
+  if(!('speechSynthesis' in window))return;
+  const v=speechSynthesis.getVoices(),sel=$('gVoice'),keep=store.get('gVoice',sel.value);if(!v.length)return;
+  sel.innerHTML='';v.filter(x=>/^en/i.test(x.lang)).concat(v.filter(x=>!/^en/i.test(x.lang))).forEach(x=>{const o=document.createElement('option');o.value=x.voiceURI;o.textContent=x.name+' ('+x.lang+')';sel.appendChild(o)});
+  if(keep&&[...sel.options].some(o=>o.value===keep))sel.value=keep;
+}
+if('speechSynthesis' in window){loadVoices();speechSynthesis.onvoiceschanged=loadVoices}
+['gVoice','gTone','gTalk','gDesc'].forEach(id=>{const v=store.get(id,null);if(v!=null&&id!=='gVoice')$(id).value=v;$(id).onchange=()=>store.set(id,$(id).value)});
+$('guideBtn').onclick=()=>{
+  if(!('speechSynthesis' in window)){$('status').textContent='This browser can\'t speak. Chrome, Edge and Safari can.';return}
+  guide.on=!guide.on;$('guideBtn').textContent='Guide: '+(guide.on?'on':'off');$('guideBtn').classList.toggle('on',guide.on);
+  if(guide.on){guide.say(current?'Guide on. We\'re in '+current.name+'.':'Guide on. Start the music when you\'re ready.',true)}else speechSynthesis.cancel();
+};
+$('gTest').onclick=()=>{const was=guide.on;guide.on=true;guide.say(guide.line('intro','Lotus')+' '+POS.find(p=>p.id==='lotus').d,true);guide.on=was};
+
 /* ---------------- sessions ---------------- */
 let sess=null;
 function sessStart(){if(sess)return;sess={id:'s'+Date.now(),start:Date.now(),log:[],songs:[],cmds:0};$('endBtn').disabled=false}
@@ -619,11 +715,11 @@ function sessSong(s){if(!sess)sessStart();sess.songs.push({name:s.name,bpm:Math.
 function sessCmd(){if(sess)sess.cmds++}
 function renderSess(){if(!sess){return}$('sessInfo').textContent='In progress · '+fmt((Date.now()-sess.start)/1000)+' · '+sess.log.length+' position'+(sess.log.length===1?'':'s')+' · '+sess.songs.length+' song'+(sess.songs.length===1?'':'s')}
 let rating=0;
-$('endBtn').onclick=()=>{if(!sess)return;sessLogEnd();sess.end=Date.now();audio.pause();$('playBtn').textContent='Play';rating=0;drawFlames();$('rateNotes').value='';$('rateBox').classList.add('show')};
+$('endBtn').onclick=()=>{if(!sess)return;guide.cooldown();sessLogEnd();sess.end=Date.now();audio.pause();$('playBtn').textContent='Play';rating=0;drawFlames();$('rateNotes').value='';$('rateBox').classList.add('show')};
 function drawFlames(){const f=$('flames');f.innerHTML='';for(let i=1;i<=5;i++){const b=document.createElement('button');b.textContent='🔥';b.className=i<=rating?'lit':'';b.setAttribute('aria-label',i+' of 5');b.onclick=()=>{rating=i;drawFlames()};f.appendChild(b)}}
 $('rateSave').onclick=async()=>{sess.rating=rating||null;sess.notes=$('rateNotes').value.trim();await sessions.save(sess);closeSess()};
 $('rateDiscard').onclick=()=>closeSess();
-function closeSess(){$('rateBox').classList.remove('show');sess=null;$('endBtn').disabled=true;$('sessInfo').textContent='Not started. A session starts when the first position shows.';learn();renderHist();renderList()}
+function closeSess(){guide.warmed=false;$('rateBox').classList.remove('show');sess=null;$('endBtn').disabled=true;$('sessInfo').textContent='Not started. A session starts when the first position shows.';learn();renderHist();renderList()}
 function learn(){
   const tot={},w={};
   sessions.list.forEach(s=>{if(!s.rating)return;s.log.forEach(l=>{const m=Math.max(.5,((l.t1||s.end)-l.t0)/60000);tot[l.id]=(tot[l.id]||0)+(s.rating-3)*m;w[l.id]=(w[l.id]||0)+m})});
