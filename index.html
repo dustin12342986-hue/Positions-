@@ -43,6 +43,14 @@ input[type=file]{display:none}
 .img img,.img video{width:100%;height:100%;object-fit:contain;display:block}
 .pulse{width:18px;height:18px;border-radius:50%;background:var(--accent);margin:10px auto 0;opacity:.25;transition:opacity .08s,transform .08s}
 .pulse.on{opacity:.95;transform:scale(1.35)}
+#upNext{position:fixed;right:16px;bottom:16px;z-index:8;width:200px;background:var(--card);border:1px solid var(--accent);border-radius:14px;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.35);opacity:0;transform:translateY(12px);transition:opacity .4s,transform .4s;pointer-events:none}
+#upNext.show{opacity:1;transform:none}
+#upNext .pv{aspect-ratio:4/3;background:var(--line);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px}
+#upNext .pv img,#upNext .pv video{width:100%;height:100%;object-fit:cover;display:block}
+#upNext .tx{padding:8px 10px}
+#upNext .tx small{display:block;color:var(--accent);font-size:13px}
+#upNext .tx b{font-size:16px;font-weight:600}
+body.stage #upNext{width:260px}
 .manual{display:none}
 .manual.show{display:block}
 input[type=range]{width:100%;accent-color:var(--accent)}
@@ -85,7 +93,7 @@ body.stage .stageonly{display:flex}
 </head>
 <body>
 <div class="wrap">
-  <h1>Tempo <span style="font-size:14px;color:var(--muted);font-weight:400">v9</span></h1>
+  <h1>Tempo <span style="font-size:14px;color:var(--muted);font-weight:400">v10</span></h1>
   <p class="sub">Play music. It breaks down each song and picks Kama Sutra positions that fit, holding each one about as long as couples usually do.</p>
 
   <div class="row">
@@ -94,6 +102,10 @@ body.stage .stageonly{display:flex}
     <button id="micBtn">Listen to the room</button>
     <button id="tapMode">Tap tempo</button>
     <button id="voiceBtn">Voice: off</button>
+  </div>
+  <div class="row" style="margin-top:10px">
+    <button id="spBtn">Connect Spotify</button>
+    <button id="ytBtn">YouTube Music</button>
   </div>
   <div class="note" id="status">Not started</div>
   <div class="heard" id="heard"></div>
@@ -122,6 +134,27 @@ body.stage .stageonly{display:flex}
     <div class="note" id="secNow"></div>
     <div class="plan" id="plan"></div>
     <div class="queue" id="queue" style="margin-top:10px"></div>
+  </div>
+
+  <div class="card manual" id="spCard">
+    <h3>Connect Spotify</h3>
+    <div class="note" style="margin-top:0">One-time setup, about 3 minutes:</div>
+    <ol class="note" style="padding-left:20px">
+      <li>Go to developer.spotify.com/dashboard and sign in with your Spotify account.</li>
+      <li>Click Create app. Any name works, like Tempo.</li>
+      <li>In Redirect URIs, paste exactly: <b id="spRedirect" style="word-break:break-all"></b></li>
+      <li>Check Web API, then save.</li>
+      <li>Open the app's Settings, copy the Client ID, and paste it below.</li>
+    </ol>
+    <input id="spClient" placeholder="Paste Client ID" style="width:100%;font:inherit;font-size:16px;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--text)">
+    <div class="row" style="margin-top:10px"><button class="primary" id="spGo">Connect</button><button id="spOut">Disconnect</button></div>
+    <div class="note" id="spStatus"></div>
+  </div>
+
+  <div class="card manual" id="ytCard">
+    <h3>YouTube Music</h3>
+    <div class="note" style="margin-top:0">YouTube Music has no public connection for other apps, so Tempo listens to it instead. Play YouTube Music out loud on any speaker, then tap Listen to the room. Tempo reads the beat and energy live and notices when a new song starts.</div>
+    <div class="row" style="margin-top:10px"><button class="primary" id="ytListen">Listen to the room</button></div>
   </div>
 
   <div class="card manual" id="liveCard">
@@ -230,6 +263,7 @@ body.stage .stageonly{display:flex}
   </div>
 </div>
 
+<div id="upNext"><div class="pv" id="unPv"></div><div class="tx"><small id="unT">Up next</small><b id="unName"></b></div></div>
 <div class="overlay" id="rateBox">
   <div class="card">
     <h3>How steamy was it?</h3>
@@ -270,7 +304,7 @@ const median=a=>{const s=[...a].sort((x,y)=>x-y);return s[Math.floor(s.length/2)
 const store={get(k,d){try{const v=localStorage.getItem('tempo.'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('tempo.'+k,JSON.stringify(v));return true}catch(e){return false}}};
 let off=new Set(store.get('off',[]));
 $('paceSel').value=store.get('pace','1');$('wakeSel').value=store.get('wake','1');
-$('paceSel').onchange=()=>{store.set('pace',$('paceSel').value);if(mode==='file'&&queue[qi]&&queue[qi].a)replanCurrent()};
+$('paceSel').onchange=()=>{store.set('pace',$('paceSel').value);if(songMode()&&curSong()&&curSong().a)replanCurrent()};
 $('wakeSel').onchange=()=>store.set('wake',$('wakeSel').value);
 const paceMult=()=>+$('paceSel').value;
 
@@ -340,7 +374,7 @@ async function analyze(file,onProg){
       if(pc[k]>=0)chroma[pc[k]]+=m;
     }
     let tot=0;for(let k=1;k<half;k++){const m=Math.exp(cur[k])-1;tot+=m*m}
-    cent[f]=den?num/den:0;bass[f]=tot?be/tot:0;flux[f]=fl;
+    cent[f]=den?num/den:0;bass[f]=tot?be*1e4/tot:0;flux[f]=fl;
     const t=prev;prev=cur;cur=t;
     if(f%400===0){onProg&&onProg(f/nF);await tick()}
   }
@@ -418,7 +452,7 @@ function pick(x,bpm,avoid=[]){
 }
 function recent(){return history.slice(-3).map(h=>h.p.id)}
 function setPos(p,why){
-  if(!p)return;
+  if(!p)return;pendingNext=null;
   if(current&&current.id===p.id){since=Date.now();return}
   if(current)history.push({p:current});
   if(history.length>30)history.shift();
@@ -430,10 +464,31 @@ function setLocked(v){locked=v;['stayBtn','stay2'].forEach(id=>{$(id).classList.
 $('stayBtn').onclick=$('stay2').onclick=()=>setLocked(!locked);
 $('nextBtn').onclick=$('next2').onclick=()=>manualNext();
 $('backBtn').onclick=$('back2').onclick=()=>goBack();
-function curIntensity(){if(mode==='file'){const s=queue[qi];if(s&&s.a){const seg=segAt(s,audio.currentTime);return seg?seg.i:s.a.intensity}}return live.intensity||.45}
-function curBpm(){if(mode==='file'){const s=queue[qi];return s&&s.a?s.a.bpm:90}return live.bpm||90}
+const songMode=()=>mode==='file'||mode==='spotify';
+function curSong(){return mode==='spotify'?sp.song:queue[qi]}
+function curTime(){return mode==='spotify'?spTime():audio.currentTime}
+function isPaused(){return mode==='spotify'?!sp.playing:audio.paused}
+function curIntensity(){if(songMode()){const s=curSong();if(s&&s.a){const seg=segAt(s,curTime());return seg?seg.i:s.a.intensity}}return live.intensity||.45}
+function curBpm(){if(songMode()){const s=curSong();return s&&s.a?s.a.bpm:90}return live.bpm||90}
 function manualNext(why='button'){setPos(pick(curIntensity(),curBpm(),[...recent(),current&&current.id]),why);lastManual=Date.now()}
-let lastManual=0;
+let lastManual=0,pendingNext=null,unId=null,unUrl=null;
+// what comes next: the song plan's next part, otherwise a pick made ahead of time and used when the change happens
+function upcoming(){
+  if(songMode()){const s=curSong();if(s&&s.plan){const g=segAt(s,curTime());const k=g?s.plan.indexOf(g):-1;if(k>=0&&k<s.plan.length-1)return s.plan[k+1].p}}
+  if(!pendingNext&&current)pendingNext=pick(curIntensity(),curBpm(),[...recent(),current.id]);
+  return pendingNext;
+}
+async function renderUpNext(){
+  const box=$('upNext'),nx=current&&!locked&&paceMult()!==0?nextChangeIn():null;
+  if(nx==null||nx>20||nx<=0){box.classList.remove('show');return}
+  const p=upcoming();if(!p||p.id===current.id){box.classList.remove('show');return}
+  $('unT').textContent='Up next in '+Math.ceil(nx)+'s';$('unName').textContent=p.name;
+  if(unId!==p.id){unId=p.id;const pv=$('unPv');pv.textContent=p.s;
+    if(unUrl){URL.revokeObjectURL(unUrl);unUrl=null}
+    const m=await media.get(p.id);if(m&&unId===p.id){unUrl=URL.createObjectURL(m.blob);pv.innerHTML='';const el=document.createElement(m.kind==='video'?'video':'img');el.src=unUrl;
+      if(m.kind==='video'){el.muted=true;el.loop=true;el.autoplay=true;el.playsInline=true;el.setAttribute('playsinline','')}pv.appendChild(el)}}
+  box.classList.add('show');
+}
 
 /* ---------------- render position ---------------- */
 let mediaUrl=null,renderSeq=0;
@@ -461,7 +516,7 @@ function renderHold(){
 let mode=null,queue=[],qi=0;const audio=new Audio();audio.preload='auto';
 $('songsIn').onchange=e=>{
   const fs=[...e.target.files];e.target.value='';if(!fs.length)return;
-  stopLive();setMode('file');
+  spStop();stopLive();setMode('file');
   const start=queue.length;fs.forEach(f=>queue.push({f,name:f.name.replace(/\.[^.]+$/,''),a:null,plan:null,busy:false}));
   renderQueue();analyzeQueue();
   if(audio.paused&&(!queue[qi]||!queue[qi].a||start===0)){if(start===0)playIdx(0)}
@@ -484,9 +539,9 @@ async function playIdx(i){
   $('status').textContent='Playing '+s.name;
 }
 audio.onended=()=>playIdx(qi+1);
-$('nextSong').onclick=()=>playIdx(qi+1);
-$('prevSong').onclick=()=>audio.currentTime>5?(audio.currentTime=0):playIdx(qi-1);
-$('playBtn').onclick=async()=>{if(audio.paused){try{await audio.play();$('playBtn').textContent='Pause'}catch(e){}}else{audio.pause();$('playBtn').textContent='Play'}};
+$('nextSong').onclick=()=>mode==='spotify'?spCmd('next'):playIdx(qi+1);
+$('prevSong').onclick=()=>mode==='spotify'?spCmd('previous'):audio.currentTime>5?(audio.currentTime=0):playIdx(qi-1);
+$('playBtn').onclick=async()=>{if(mode==='spotify'){spCmd(sp.playing?'pause':'play');return}if(audio.paused){try{await audio.play();$('playBtn').textContent='Pause'}catch(e){}}else{audio.pause();$('playBtn').textContent='Play'}};
 
 function planSong(s,atStart){
   const a=s.a,pm=paceMult(),segs=[];
@@ -509,11 +564,12 @@ function planSong(s,atStart){
   const avoid=recent();let prevP=null;
   segs.forEach((g,k)=>{
     if(k===0&&atStart&&current&&(Date.now()-since)/1000<90&&Math.abs(current.i-g.i)<.2)g.p=current;
+    else if(k===0&&atStart&&pendingNext)g.p=pendingNext;
     else g.p=pick(g.i,a.bpm,[...avoid,prevP&&prevP.id].filter(Boolean));
     prevP=g.p;avoid.push(g.p&&g.p.id)});
   s.plan=segs;s.segIdx=-1;
 }
-function replanCurrent(){const s=queue[qi];if(!s||!s.a)return;const t=audio.currentTime;planSong(s,false);s.segIdx=s.plan.findIndex(g=>t>=g.start&&t<g.end);showSong(s)}
+function replanCurrent(){const s=curSong();if(!s||!s.a)return;const t=curTime();planSong(s,false);s.segIdx=s.plan.findIndex(g=>t>=g.start&&t<g.end);showSong(s)}
 function segAt(s,t){return s.plan&&s.plan.find(g=>t>=g.start&&t<g.end)}
 function showSong(s){
   const a=s.a;
@@ -536,14 +592,14 @@ function renderQueue(){
   queue.forEach((s,i)=>{const d=document.createElement('div');d.textContent=(i===qi?'Playing  ':'')+s.name+(s.a?'  ·  '+Math.round(s.a.bpm)+' BPM '+s.a.key:s.err?'  ·  could not read':'  ·  reading');if(i===qi)d.className='now';el.appendChild(d)});
 }
 function nextChangeIn(){
-  if(mode==='file'){const s=queue[qi];if(!s||!s.plan)return null;const t=audio.currentTime,g=segAt(s,t);if(!g)return null;
-    const k=s.plan.indexOf(g);return k<s.plan.length-1?g.end-t:(audio.duration||g.end)-t}
+  if(songMode()){const s=curSong();if(!s||!s.plan)return null;const t=curTime(),g=segAt(s,t);if(!g)return null;
+    const k=s.plan.indexOf(g);return k<s.plan.length-1?g.end-t:s.a.dur-t}
   if(mode==='mic'||mode==='tap'){const x=mode==='tap'?tapInt():live.intensity;return Math.max(0,holdFor(x)*paceMult()-(Date.now()-since)/1000)}
   return null;
 }
 function fileLoop(){
-  const s=queue[qi];if(!s||!s.plan||!s.a)return;
-  const t=audio.currentTime,k=s.plan.findIndex(g=>t>=g.start&&t<g.end);
+  const s=curSong();if(!s||!s.plan||!s.a)return;
+  const t=curTime(),k=s.plan.findIndex(g=>t>=g.start&&t<g.end);
   if(k>=0&&k!==s.segIdx){
     const first=s.segIdx===-1;s.segIdx=k;
     const recentManual=Date.now()-lastManual<60000;
@@ -551,17 +607,110 @@ function fileLoop(){
     renderPlan(s);
   }
   const h=$('head');if(h)h.style.left=(t/s.a.dur*100)+'%';
-  const sec=s.a.sections.find(x=>t>=x.start&&t<x.end);if(sec&&!audio.paused&&sec.label!==guide.lastSec){guide.onSection(sec.label,guide.lastSec);guide.lastSec=sec.label}$('secNow').textContent=sec?'Now: '+sec.label+' · '+fmt(t)+' of '+fmt(s.a.dur):'';
+  const sec=s.a.sections.find(x=>t>=x.start&&t<x.end);if(sec&&!isPaused()&&sec.label!==guide.lastSec){guide.onSection(sec.label,guide.lastSec);guide.lastSec=sec.label}$('secNow').textContent=sec?'Now: '+sec.label+' · '+fmt(t)+' of '+fmt(s.a.dur):'';
   // beat pulse locked to the song's beat
-  if(!audio.paused){const b=s.a.bpm>=130?s.a.bpm/2:s.a.bpm,fr=(((t-s.a.phase)*b/60)%1+1)%1;$('pulse').classList.toggle('on',fr<.13)}
+  if(!isPaused()){const b=s.a.bpm>=130?s.a.bpm/2:s.a.bpm,fr=(((t-s.a.phase)*b/60)%1+1)%1;$('pulse').classList.toggle('on',fr<.13)}
 }
+
+
+/* ---------------- Spotify ---------------- */
+// Spotify blocks raw audio and removed its audio-features endpoint for new apps (Nov 2024),
+// so Tempo reads what is playing from Spotify and gets tempo/energy from ReccoBeats by Spotify ID.
+const SP_SCOPES='user-read-currently-playing user-read-playback-state user-modify-playback-state';
+const spRedirect=location.origin+location.pathname;
+const sp={song:null,trackId:null,t0:0,at:0,playing:false,poll:null,feat:{}};
+$('spRedirect').textContent=spRedirect;$('spClient').value=store.get('spClient','');
+const spTime=()=>sp.playing?sp.t0+(Date.now()-sp.at)/1000:sp.t0;
+const b64u=buf=>btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+$('spBtn').onclick=()=>{$('spCard').classList.toggle('show');$('ytCard').classList.remove('show');if(spToken())spStart()};
+$('ytBtn').onclick=()=>{$('ytCard').classList.toggle('show');$('spCard').classList.remove('show')};
+$('ytListen').onclick=()=>{$('ytCard').classList.remove('show');$('micBtn').click()};
+$('spGo').onclick=async()=>{
+  const id=$('spClient').value.trim();if(!id){$('spStatus').textContent='Paste your Client ID first.';return}
+  if(location.protocol!=='https:'&&location.hostname!=='localhost'){$('spStatus').textContent='Spotify needs Tempo opened from its https site, like your GitHub Pages link.';return}
+  store.set('spClient',id);
+  const ver=b64u(crypto.getRandomValues(new Uint8Array(48)));store.set('spVer',ver);
+  const ch=b64u(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(ver)));
+  location.href='https://accounts.spotify.com/authorize?'+new URLSearchParams({response_type:'code',client_id:id,scope:SP_SCOPES,code_challenge_method:'S256',code_challenge:ch,redirect_uri:spRedirect});
+};
+$('spOut').onclick=()=>{store.set('spTok',null);spStop();$('spStatus').textContent='Disconnected.';$('spBtn').textContent='Connect Spotify'};
+function spToken(){return store.get('spTok',null)}
+async function spTokenReq(body){
+  const r=await fetch('https://accounts.spotify.com/api/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(body)});
+  if(!r.ok)throw new Error('token '+r.status);const j=await r.json();
+  const old=spToken()||{};store.set('spTok',{access:j.access_token,refresh:j.refresh_token||old.refresh,exp:Date.now()+(j.expires_in-60)*1000});
+}
+async function spAccess(){
+  const t=spToken();if(!t)return null;
+  if(Date.now()>t.exp){try{await spTokenReq({grant_type:'refresh_token',refresh_token:t.refresh,client_id:store.get('spClient','')})}catch(e){store.set('spTok',null);return null}}
+  return spToken().access;
+}
+async function spApi(path,opt={}){
+  const a=await spAccess();if(!a)throw new Error('signed out');
+  return fetch('https://api.spotify.com/v1'+path,{...opt,headers:{Authorization:'Bearer '+a,...(opt.headers||{})}});
+}
+async function spCmd(c){
+  const map={pause:['PUT','/me/player/pause'],play:['PUT','/me/player/play'],next:['POST','/me/player/next'],previous:['POST','/me/player/previous']};
+  try{const r=await spApi(map[c][1],{method:map[c][0]});if(r.status===403)$('status').textContent='Spotify only allows play, pause and skip from other apps with Premium.';setTimeout(spPoll,400)}catch(e){}
+}
+async function spFeatures(id){
+  if(sp.feat[id]!==undefined)return sp.feat[id];
+  const tries=['https://api.reccobeats.com/v1/audio-features?ids='+id,'https://api.reccobeats.com/v1/track/'+id+'/audio-features'];
+  for(const u of tries){try{const r=await fetch(u,{headers:{Accept:'application/json'}});if(!r.ok)continue;const j=await r.json();
+    const f=j&&j.content?j.content[0]:(Array.isArray(j)?j[0]:j);if(f&&f.tempo){sp.feat[id]=f;return f}}catch(e){}}
+  sp.feat[id]=null;return null;
+}
+function spAnalysis(item,f){
+  const dur=item.duration_ms/1000;
+  if(!f)return {dur,bpm:100,phase:0,key:'--',mode:'major',energy:.5,bright:.5,bass:.5,pulse:.5,dyn:.3,intensity:.45,
+    sections:[{start:0,end:dur,e:.5,i:.45,label:'Groove'}],tags:['No tempo data for this song','Using a middle pace'],src:'none'};
+  const bpm=f.tempo,energy=clamp(f.energy),dance=clamp(f.danceability??.5),val=clamp(f.valence??.5),loud=clamp(((f.loudness??-8)+20)/16);
+  const minor=f.mode===0;
+  const I=clamp(.35*clamp((bpm-60)/100)+.35*energy+.15*dance+.1*val+.05*loud-(minor?.04:0));
+  const tags=[];if(bpm<85)tags.push('Slow');else if(bpm>128)tags.push('Fast');
+  tags.push(val<.35?'Moody':val>.65?'Upbeat':'Warm');if(dance>.7)tags.push('Danceable');if((f.acousticness||0)>.6)tags.push('Acoustic');if(energy>.75)tags.push('High energy');
+  return {dur,bpm,phase:0,key:f.key!=null&&f.key>=0?KEYS[f.key]+(minor?'m':''):'--',mode:minor?'minor':'major',energy,bright:val,bass:loud,pulse:dance,dyn:clamp(1-(f.acousticness||0)*.5-energy*.3),
+    intensity:I,sections:[{start:0,end:dur,e:energy,i:I,label:'Groove'}],tags,src:'reccobeats'};
+}
+function spStop(){if(sp.poll){clearInterval(sp.poll);sp.poll=null}if(mode==='spotify')mode=null}
+function spStart(){
+  if(!spToken())return;stopLive();audio.pause();setMode('spotify');$('spCard').classList.remove('show');
+  $('spBtn').textContent='Spotify connected';$('status').textContent='Connected to Spotify. Play something in the Spotify app.';
+  if(!sp.poll)sp.poll=setInterval(spPoll,3000);spPoll();
+}
+async function spPoll(){
+  if(mode!=='spotify')return;
+  let r;try{r=await spApi('/me/player/currently-playing')}catch(e){$('status').textContent='Spotify sign in ended. Tap Connect Spotify again.';spStop();return}
+  if(r.status===204){sp.playing=false;$('status').textContent='Spotify is connected. Nothing is playing yet.';return}
+  if(!r.ok){$('status').textContent='Spotify returned an error ('+r.status+'). Trying again.';return}
+  const j=await r.json(),item=j.item;if(!item||j.currently_playing_type!=='track'){sp.playing=false;return}
+  sp.t0=(j.progress_ms||0)/1000;sp.at=Date.now();sp.playing=!!j.is_playing;
+  $('playBtn').textContent=sp.playing?'Pause':'Play';
+  if(item.id!==sp.trackId){
+    sp.trackId=item.id;const name=item.name+' · '+item.artists.map(a=>a.name).join(', ');
+    $('songName').textContent=name;$('status').textContent='Reading '+item.name+'...';
+    const f=await spFeatures(item.id);
+    const s={name,a:spAnalysis(item,f),plan:null};sp.song=s;guide.lastSec=null;
+    planSong(s,true);showSong(s);sessSong(s);
+    $('status').textContent=f?'Playing from Spotify':'Playing from Spotify. No tempo data for this song, so Tempo uses a middle pace. Listen to the room reads it live instead.';
+  }
+}
+// finish sign in when Spotify sends the user back
+(async()=>{
+  const q=new URLSearchParams(location.search),code=q.get('code');
+  if(q.get('error')){$('status').textContent='Spotify sign in was cancelled.';history.replaceState(null,'',spRedirect)}
+  if(code){history.replaceState(null,'',spRedirect);
+    try{await spTokenReq({grant_type:'authorization_code',code,redirect_uri:spRedirect,client_id:store.get('spClient',''),code_verifier:store.get('spVer','')});spStart()}
+    catch(e){$('spCard').classList.add('show');$('spStatus').textContent='Spotify sign in did not finish. Check the Client ID and that the Redirect URI matches exactly.'}}
+  else if(spToken())$('spBtn').textContent='Spotify connected';
+})();
 
 /* ---------------- live mic ---------------- */
 let ctx,analyser,stream,timer=null,freq,timeBuf,prevMag=null,onsetBuf=[],bpmHist=[];
 const live={bpm:0,energy:0,bright:0,pulse:0,intensity:0,quiet:0,songStart:0};
 const LFPS=50,LWIN=LFPS*10;
 $('micBtn').onclick=async()=>{
-  try{
+  try{spStop();
     stopLive();audio.pause();
     if(!ctx){ctx=new (window.AudioContext||window.webkitAudioContext)();analyser=ctx.createAnalyser();analyser.fftSize=2048;analyser.smoothingTimeConstant=0;freq=new Float32Array(analyser.frequencyBinCount);timeBuf=new Float32Array(analyser.fftSize)}
     if(ctx.state==='suspended')await ctx.resume();
@@ -599,7 +748,7 @@ function liveTick(){
   if(!current){setPos(pick(live.intensity,live.bpm,[]),'start');return}
   if(locked||paceMult()===0){renderHold();return}
   const held=(Date.now()-since)/1000,newSong=Date.now()-live.songStart<15000&&Date.now()-live.songStart>8000;
-  if(held>holdFor(live.intensity)*paceMult()||(newSong&&held>90))setPos(pick(live.intensity,live.bpm,[...recent(),current.id]),newSong?'new song':'timer');
+  if(held>holdFor(live.intensity)*paceMult()||(newSong&&held>90))setPos(pendingNext||pick(live.intensity,live.bpm,[...recent(),current.id]),newSong?'new song':'timer');
 }
 let pulseT=null,pulseBpm=0;
 function setPulse(b){if(!b||Math.abs(b-pulseBpm)<1)return;pulseBpm=b;clearInterval(pulseT);const iv=60000/(b>=130?b/2:b);
@@ -608,13 +757,13 @@ function setPulse(b){if(!b||Math.abs(b-pulseBpm)<1)return;pulseBpm=b;clearInterv
 /* ---------------- tap mode ---------------- */
 let taps=[];
 const tapInt=()=>{const v=$('vibeSlider').value/100;return clamp(.5*clamp(((live.bpm||90)-60)/100)+.5*v)};
-$('tapMode').onclick=()=>{stopLive();audio.pause();setMode('tap');$('status').textContent='Tap along to the beat a few times'};
+$('tapMode').onclick=()=>{spStop();stopLive();audio.pause();setMode('tap');$('status').textContent='Tap along to the beat a few times'};
 $('tapBtn').onclick=()=>{const t=performance.now();if(taps.length&&t-taps[taps.length-1]>2000)taps=[];taps.push(t);if(taps.length>8)taps.shift();
   if(taps.length>=3){live.bpm=60000/((taps[taps.length-1]-taps[0])/(taps.length-1));setPulse(live.bpm);if(!current)setPos(pick(tapInt(),live.bpm,[]),'start');render()}};
-function tapTick(){if(mode!=='tap'||!current||locked||paceMult()===0)return;if((Date.now()-since)/1000>holdFor(tapInt())*paceMult())setPos(pick(tapInt(),live.bpm,[...recent(),current.id]),'timer')}
+function tapTick(){if(mode!=='tap'||!current||locked||paceMult()===0)return;if((Date.now()-since)/1000>holdFor(tapInt())*paceMult())setPos(pendingNext||pick(tapInt(),live.bpm,[...recent(),current.id]),'timer')}
 
-function setMode(m){mode=m;$('songCard').classList.toggle('show',m==='file');$('liveCard').classList.toggle('show',m==='mic');$('manualCard').classList.toggle('show',m==='tap')}
-setInterval(()=>{if(mode==='file')fileLoop();if(mode==='tap')tapTick();renderHold();renderSess();guide.tick()},250);
+function setMode(m){mode=m;$('songCard').classList.toggle('show',m==='file'||m==='spotify');$('queue').style.display=m==='file'?'':'none';$('liveCard').classList.toggle('show',m==='mic');$('manualCard').classList.toggle('show',m==='tap')}
+setInterval(()=>{if(songMode())fileLoop();if(mode==='tap')tapTick();renderHold();renderSess();guide.tick();renderUpNext()},250);
 
 /* ---------------- voice ---------------- */
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;let rec=null,voiceOn=false;
@@ -639,8 +788,8 @@ function handleSpeech(raw){
   else if(/\b(slow|slower|softer|gentle|easy|calm|sensual)\b/.test(t)){bias=Math.max(-.3,bias-.15);manualNext('voice');say('slower')}
   else if(/\b(fast|faster|harder|more|wild|intense|up)\b/.test(t)){bias=Math.min(.3,bias+.15);manualNext('voice');say('faster')}
   else if(/\b(switch|next|change|new|another|skip|different)\b/.test(t)){manualNext('voice');say('next position')}
-  else if(/\b(pause|stop)\b/.test(t)){audio.pause();$('playBtn').textContent='Play';say('paused')}
-  else if(/\b(play|resume|start)\b/.test(t)){audio.play().then(()=>$('playBtn').textContent='Pause').catch(()=>{});say('playing')}
+  else if(/\b(pause|stop)\b/.test(t)){if(mode==='spotify')spCmd('pause');audio.pause();$('playBtn').textContent='Play';say('paused')}
+  else if(/\b(play|resume|start)\b/.test(t)){if(mode==='spotify'){spCmd('play');say('playing');return}audio.play().then(()=>$('playBtn').textContent='Pause').catch(()=>{});say('playing')}
   else $('heard').textContent='Heard "'+raw.trim()+'" · no command';
 }
 
