@@ -93,7 +93,7 @@ body.stage .stageonly{display:flex}
 </head>
 <body>
 <div class="wrap">
-  <h1>Tempo <span style="font-size:14px;color:var(--muted);font-weight:400">v10</span></h1>
+  <h1>Tempo <span style="font-size:14px;color:var(--muted);font-weight:400">v11</span></h1>
   <p class="sub">Play music. It breaks down each song and picks Kama Sutra positions that fit, holding each one about as long as couples usually do.</p>
 
   <div class="row">
@@ -622,7 +622,7 @@ const sp={song:null,trackId:null,t0:0,at:0,playing:false,poll:null,feat:{}};
 $('spRedirect').textContent=spRedirect;$('spClient').value=store.get('spClient','');
 const spTime=()=>sp.playing?sp.t0+(Date.now()-sp.at)/1000:sp.t0;
 const b64u=buf=>btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-$('spBtn').onclick=()=>{$('spCard').classList.toggle('show');$('ytCard').classList.remove('show');if(spToken())spStart()};
+$('spBtn').onclick=()=>{$('ytCard').classList.remove('show');if(spToken()){spStart();spPoll()}else $('spCard').classList.toggle('show')};
 $('ytBtn').onclick=()=>{$('ytCard').classList.toggle('show');$('spCard').classList.remove('show')};
 $('ytListen').onclick=()=>{$('ytCard').classList.remove('show');$('micBtn').click()};
 $('spGo').onclick=async()=>{
@@ -681,9 +681,9 @@ function spStart(){
 async function spPoll(){
   if(mode!=='spotify')return;
   let r;try{r=await spApi('/me/player/currently-playing')}catch(e){$('status').textContent='Spotify sign in ended. Tap Connect Spotify again.';spStop();return}
-  if(r.status===204){sp.playing=false;$('status').textContent='Spotify is connected. Nothing is playing yet.';return}
-  if(!r.ok){$('status').textContent='Spotify returned an error ('+r.status+'). Trying again.';return}
-  const j=await r.json(),item=j.item;if(!item||j.currently_playing_type!=='track'){sp.playing=false;return}
+  if(r.status===204){sp.playing=false;$('status').textContent='Spotify is connected. Nothing is playing yet. Start a song in the Spotify app. (checked '+new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit',second:'2-digit'})+')';return}
+  if(!r.ok){let m='';try{m=(await r.json()).error.message}catch(e){}$('status').textContent='Spotify error '+r.status+(m?': '+m:'')+'. Send Claude a screenshot of this line.';return}
+  const j=await r.json(),item=j.item;if(!item||j.currently_playing_type!=='track'){sp.playing=false;$('status').textContent='Spotify is playing something that is not a song (like a podcast or ad).';return}
   sp.t0=(j.progress_ms||0)/1000;sp.at=Date.now();sp.playing=!!j.is_playing;
   $('playBtn').textContent=sp.playing?'Pause':'Play';
   if(item.id!==sp.trackId){
@@ -702,8 +702,10 @@ async function spPoll(){
   if(code){history.replaceState(null,'',spRedirect);
     try{await spTokenReq({grant_type:'authorization_code',code,redirect_uri:spRedirect,client_id:store.get('spClient',''),code_verifier:store.get('spVer','')});spStart()}
     catch(e){$('spCard').classList.add('show');$('spStatus').textContent='Spotify sign in did not finish. Check the Client ID and that the Redirect URI matches exactly.'}}
-  else if(spToken())$('spBtn').textContent='Spotify connected';
+  else if(spToken())spStart();
 })();
+// check again right away when coming back from the Spotify app
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&mode==='spotify')spPoll()});
 
 /* ---------------- live mic ---------------- */
 let ctx,analyser,stream,timer=null,freq,timeBuf,prevMag=null,onsetBuf=[],bpmHist=[];
