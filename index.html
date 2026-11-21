@@ -93,7 +93,7 @@ body.stage .stageonly{display:flex}
 </head>
 <body>
 <div class="wrap">
-  <h1>Tempo <span style="font-size:14px;color:var(--muted);font-weight:400">v11</span></h1>
+  <h1>Tempo <span style="font-size:14px;color:var(--muted);font-weight:400">v12</span></h1>
   <p class="sub">Play music. It breaks down each song and picks Kama Sutra positions that fit, holding each one about as long as couples usually do.</p>
 
   <div class="row">
@@ -149,6 +149,12 @@ body.stage .stageonly{display:flex}
     <input id="spClient" placeholder="Paste Client ID" style="width:100%;font:inherit;font-size:16px;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--text)">
     <div class="row" style="margin-top:10px"><button class="primary" id="spGo">Connect</button><button id="spOut">Disconnect</button></div>
     <div class="note" id="spStatus"></div>
+  </div>
+
+  <div class="card manual" id="spDiag">
+    <div class="row" style="justify-content:space-between"><h3 style="margin:0">Spotify check</h3><button class="primary" id="spCheck">Check now</button></div>
+    <div class="note" id="spDiagOut" style="white-space:pre-wrap;font-family:ui-monospace,Menlo,monospace;font-size:13px"></div>
+    <div class="row" style="margin-top:10px"><button id="spReset">Start Spotify setup over</button></div>
   </div>
 
   <div class="card manual" id="ytCard">
@@ -618,11 +624,18 @@ function fileLoop(){
 // so Tempo reads what is playing from Spotify and gets tempo/energy from ReccoBeats by Spotify ID.
 const SP_SCOPES='user-read-currently-playing user-read-playback-state user-modify-playback-state';
 const spRedirect=location.origin+location.pathname;
-const sp={song:null,trackId:null,t0:0,at:0,playing:false,poll:null,feat:{}};
+const sp={song:null,trackId:null,t0:0,at:0,playing:false,poll:null,feat:{},log:[]};
+function spLog(m){sp.log.push(new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit',second:'2-digit'})+'  '+m);if(sp.log.length>8)sp.log.shift();spDiagDraw()}
+function spDiagDraw(){const t=store.get('spTok',null);
+  $('spDiagOut').textContent=['Page: '+location.href.split('?')[0],'Redirect URI: '+spRedirect,'Client ID saved: '+(store.get('spClient','')?'yes ('+store.get('spClient','').slice(0,6)+'...)':'no'),
+  'Signed in: '+(t?'yes, token '+(Date.now()<t.exp?'fresh':'expired, will refresh'):'no'),'Following Spotify: '+(mode==='spotify'?'yes':'no (mode: '+(mode||'none')+')'),'',...sp.log].join('\n')}
+window.addEventListener('error',e=>{try{spLog('App error: '+e.message)}catch(x){}});
 $('spRedirect').textContent=spRedirect;$('spClient').value=store.get('spClient','');
 const spTime=()=>sp.playing?sp.t0+(Date.now()-sp.at)/1000:sp.t0;
 const b64u=buf=>btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-$('spBtn').onclick=()=>{$('ytCard').classList.remove('show');if(spToken()){spStart();spPoll()}else $('spCard').classList.toggle('show')};
+$('spBtn').onclick=()=>{$('ytCard').classList.remove('show');$('spDiag').classList.add('show');spDiagDraw();if(spToken()){spStart();spPoll()}else $('spCard').classList.add('show')};
+$('spCheck').onclick=async()=>{spLog('Checking...');if(!spToken()){spLog('Not signed in. Use the setup above and tap Connect.');$('spCard').classList.add('show');return}if(mode!=='spotify')spStart();await spPoll(true)};
+$('spReset').onclick=()=>{store.set('spTok',null);store.set('spVer',null);spStop();sp.trackId=null;spLog('Cleared. Paste the Client ID and tap Connect.');$('spCard').classList.add('show');$('spBtn').textContent='Connect Spotify'};
 $('ytBtn').onclick=()=>{$('ytCard').classList.toggle('show');$('spCard').classList.remove('show')};
 $('ytListen').onclick=()=>{$('ytCard').classList.remove('show');$('micBtn').click()};
 $('spGo').onclick=async()=>{
@@ -637,7 +650,7 @@ $('spOut').onclick=()=>{store.set('spTok',null);spStop();$('spStatus').textConte
 function spToken(){return store.get('spTok',null)}
 async function spTokenReq(body){
   const r=await fetch('https://accounts.spotify.com/api/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(body)});
-  if(!r.ok)throw new Error('token '+r.status);const j=await r.json();
+  if(!r.ok){let m='';try{const e=await r.json();m=e.error_description||e.error}catch(x){}spLog('Sign in step failed '+r.status+': '+m);throw new Error('token '+r.status)}const j=await r.json();
   const old=spToken()||{};store.set('spTok',{access:j.access_token,refresh:j.refresh_token||old.refresh,exp:Date.now()+(j.expires_in-60)*1000});
 }
 async function spAccess(){
@@ -678,18 +691,20 @@ function spStart(){
   $('spBtn').textContent='Spotify connected';$('status').textContent='Connected to Spotify. Play something in the Spotify app.';
   if(!sp.poll)sp.poll=setInterval(spPoll,3000);spPoll();
 }
-async function spPoll(){
+async function spPoll(force){
   if(mode!=='spotify')return;
-  let r;try{r=await spApi('/me/player/currently-playing')}catch(e){$('status').textContent='Spotify sign in ended. Tap Connect Spotify again.';spStop();return}
+  let r;try{r=await spApi('/me/player/currently-playing')}catch(e){spLog('Request failed: '+e.message);$('status').textContent='Spotify sign in ended. Tap Connect Spotify again.';spStop();return}
+  if(force||r.status!==200)spLog('Spotify answered '+r.status+(r.status===204?' (nothing playing on this account)':''));
   if(r.status===204){sp.playing=false;$('status').textContent='Spotify is connected. Nothing is playing yet. Start a song in the Spotify app. (checked '+new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit',second:'2-digit'})+')';return}
-  if(!r.ok){let m='';try{m=(await r.json()).error.message}catch(e){}$('status').textContent='Spotify error '+r.status+(m?': '+m:'')+'. Send Claude a screenshot of this line.';return}
+  if(!r.ok){let m='';try{m=(await r.json()).error.message}catch(e){}spLog('Error '+r.status+': '+(m||'no message'));$('status').textContent='Spotify error '+r.status+(m?': '+m:'')+'. Send Claude a screenshot of this line.';return}
   const j=await r.json(),item=j.item;if(!item||j.currently_playing_type!=='track'){sp.playing=false;$('status').textContent='Spotify is playing something that is not a song (like a podcast or ad).';return}
   sp.t0=(j.progress_ms||0)/1000;sp.at=Date.now();sp.playing=!!j.is_playing;
   $('playBtn').textContent=sp.playing?'Pause':'Play';
+  if(force)spLog('Playing: '+item.name+(j.is_playing?'':' (paused)'));
   if(item.id!==sp.trackId){
     sp.trackId=item.id;const name=item.name+' · '+item.artists.map(a=>a.name).join(', ');
     $('songName').textContent=name;$('status').textContent='Reading '+item.name+'...';
-    const f=await spFeatures(item.id);
+    const f=await spFeatures(item.id);spLog('Song: '+item.name+' · tempo data '+(f?'found ('+Math.round(f.tempo)+' BPM)':'not found'));
     const s={name,a:spAnalysis(item,f),plan:null};sp.song=s;guide.lastSec=null;
     planSong(s,true);showSong(s);sessSong(s);
     $('status').textContent=f?'Playing from Spotify':'Playing from Spotify. No tempo data for this song, so Tempo uses a middle pace. Listen to the room reads it live instead.';
@@ -698,8 +713,8 @@ async function spPoll(){
 // finish sign in when Spotify sends the user back
 (async()=>{
   const q=new URLSearchParams(location.search),code=q.get('code');
-  if(q.get('error')){$('status').textContent='Spotify sign in was cancelled.';history.replaceState(null,'',spRedirect)}
-  if(code){history.replaceState(null,'',spRedirect);
+  if(q.get('error')){$('spDiag').classList.add('show');spLog('Spotify said: '+q.get('error'));$('status').textContent='Spotify sign in was cancelled.';history.replaceState(null,'',spRedirect)}
+  if(code){history.replaceState(null,'',spRedirect);$('spDiag').classList.add('show');spLog('Back from Spotify, finishing sign in');
     try{await spTokenReq({grant_type:'authorization_code',code,redirect_uri:spRedirect,client_id:store.get('spClient',''),code_verifier:store.get('spVer','')});spStart()}
     catch(e){$('spCard').classList.add('show');$('spStatus').textContent='Spotify sign in did not finish. Check the Client ID and that the Redirect URI matches exactly.'}}
   else if(spToken())spStart();
